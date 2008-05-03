@@ -1,6 +1,25 @@
 #!/usr/bin/env ruby
-#require "rubygems"
-$:.unshift("lib")
+# 
+#  Kanocc - Kanocc ain't no compiler-compiler
+#  
+#  Copyright 2008 Christian Surlykke
+#
+#  This file is part of Kanocc.
+#
+#  Kanocc is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License, version 3 
+#  as published by the Free Software Foundation.
+#
+#  Kanocc is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License, version 3 for more details.
+#
+#  You should have received a copy of the GNU General Public License,
+#  version 3 along with Kanocc.  If not, see <http://www.gnu.org/licenses/>.
+#
+libdir = File.expand_path(File.join(File.dirname(__FILE__), "..", "lib"))
+$:.unshift(libdir)
 require "kanocc.rb"
 require "logger"
 #require "breakpoint"
