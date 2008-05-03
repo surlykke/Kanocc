@@ -1,0 +1,7 @@
+TODO 
+Modules 
+Unittesting 
+Optimizations 
+Tomita 
+Several regular expressions in tokens  
+Order significant
