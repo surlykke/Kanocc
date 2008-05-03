@@ -8,7 +8,7 @@ spec = Gem::Specification.new do |s|
   s.homepage = ""
   s.platform = Gem::Platform::RUBY
   s.summary = "Kanocc - Kanocc ain't no compiler-compiler. A framework for syntax directed translation"
-  candidates = Dir.glob("{doc,lib,test,examples}/**/*")
+  candidates = ["README", "COPYING"] + Dir.glob("{doc,lib,test,examples}/**/*")
   s.files     = candidates.delete_if do |item|
                   item.include?("rdoc")
                 end
