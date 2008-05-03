@@ -1,0 +1,15 @@
+Kanocc - Kanocc ain't no compiler-compiler
+
+Kanocc is a ruby framework for parsing and translation
+
+== Getting Kanocc
+
+Kanocc is free software, available under the GPL v3 license. 
+You can get it from the rubyforge git repository:
+
+git clone git://rubyforge.org/kanocc.git
+
+== Documentation and contact information
+
+Visik http://kanocc.rubyforge.org where you'll find links to documentation, 
+mailing lists and bug tracking.
