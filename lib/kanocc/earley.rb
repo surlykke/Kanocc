@@ -141,7 +141,7 @@ module Kanocc
     end
     
     def translate(element, pos)
-      @logger.debug("translate: " + element.inspect + ", pos = " + pos.inspect)   
+      @logger.debug("translate: " + element.inspect + " on " + pos.inspect)   
       if element.class == Item
         translate_helper(element, pos) 
         @kanocc.report_reduction(element.rule, 
@@ -156,7 +156,7 @@ module Kanocc
     end
     
     def translate_helper(item, pos)
-      @logger.debug("translateHelper: " + item.inspect) 
+      @logger.debug("translateHelper: " + item.inspect + " on " + pos.inspect) 
       return if item.dot == 0 
       if item.rule.rhs[item.dot - 1].respond_to?("rules")
         # Assume item is of form [A --> aB*c, k] in itemlist i
@@ -171,16 +171,10 @@ module Kanocc
         candidates = candidates.find_all {|subItem|
           @itemLists[subItem.j].find_item(item.rule, item.dot - 1, item.j)
         }
+        
         ##### 
-        # Precedence handling is somewhat problematic in Earley parsing. 
-        # We now have to choose amongst possibly several candidates
-        #
-        # Last: Pick the one with the rule with the _lowest_ precedence
-        # (We are finding reductions top-down, but will evaluate bottom-up, hence
-        # this will make the rule with the _highest_ precedence evaluate first.
-        
-        
-        sub_item = candidates.min
+        # Precedence: We pick the posibility with the _higest_ precedence
+        sub_item = candidates.max
         prev_item = @itemLists[sub_item.j].find_item(item.rule, item.dot - 1, item.j)
         prev_list = sub_item.j
       else
@@ -196,10 +190,6 @@ module Kanocc
       @itemLists[inputPos].find_all do |item|
         item.rule.lhs == nonterminal and item.dot >= item.rule.rhs.length
       end
-    end
-    
-    def operator_precedence(rule)
-      - (@kanocc.operator_precedence(rule))
     end
   end 
   
@@ -310,12 +300,22 @@ module Kanocc
     end
   
     def <=>(other)
-      tmp = (@rule.prec <=> other.rule.prec)
-      if tmp == 0
-        return other.j <=> @j
-      else 
-        return tmp
+      puts "Comparing #{self.inspect} and #{other.inspect}"
+      if (@rule.operator_prec and other.rule.operator_prec)
+        res = other.rule.operator_prec <=> @rule.operator_prec
+      elsif ((tmp = (@rule.prec <=> other.rule.prec)) != 0)
+        res = tmp
+      else
+        res = @j <=> other.j 
       end
+      if res < 0 
+         puts "bigger: #{other.inspect}"
+      elsif res > 0
+        puts "bigger: #{self.inspect}"
+      else
+        puts "equal"
+      end
+      return res
     end
   end
   

@@ -43,12 +43,12 @@ class Package < Kanocc::Nonterminal
   rule('{', PackageList , '}') { @val = '{' + @rhs[1].val + '}'} 
   rule('[', PackageList , ']') { @val = '[' + @rhs[1].val + ']'} 
   # Some error-correcting rules 
-#  rule(PackageList, ')') {@val = '(' + @rhs[0].val + ')'}; prec -2
-#  rule('(', PackageList) {@val = '(' + @rhs[1].val + ')'}; prec -2
-#  rule(PackageList, '}') {@val = '{' + @rhs[0].val + '}'}; prec -2
-#  rule('{', PackageList) {@val = '{' + @rhs[1].val + '}'}; prec -2
-#  rule(PackageList, ']') {@val = '[' + @rhs[0].val + ']'}; prec -2
-#  rule('[', PackageList) {@val = '[' + @rhs[1].val + ']'}; prec -2
+  rule(PackageList, ')') {@val = '(' + @rhs[0].val + ')'}; prec -2
+  rule('(', PackageList) {@val = '(' + @rhs[1].val + ')'}; prec -2
+  rule(PackageList, '}') {@val = '{' + @rhs[0].val + '}'}; prec -2
+  rule('{', PackageList) {@val = '{' + @rhs[1].val + '}'}; prec -2
+  rule(PackageList, ']') {@val = '[' + @rhs[0].val + ']'}; prec -2
+  rule('[', PackageList) {@val = '[' + @rhs[1].val + ']'}; prec -2
 end
 
 class PackageList 
@@ -59,7 +59,7 @@ end
 
 # Set up a parser 
 packageChecker = Kanocc::Kanocc.new(Package)
-packageChecker.logger.level = Logger::DEBUG 
+#packageChecker.logger.level = Logger::DEBUG 
 # And go
 puts "[(B)] becomes " + packageChecker.parse('[(B)]').val
-#puts "[[B] becomes " + packageChecker.parse('[[B]').val
+puts "[[B] becomes " + packageChecker.parse('[[B]').val

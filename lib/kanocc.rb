@@ -231,15 +231,7 @@ module Kanocc
         end
       end
     end
-    
-    def operator_precedence(rule)
-      if operator = rule.operator
-        rule.lhs.operator_precedence(operator) || 0
-      else
-        0
-      end
-    end
-    
+        
     # For debugging
     def show_stack
       @logger.info("Stack: [" + @stack.map {|gs| show(gs)}.join(", ") + "]" ) if @logger

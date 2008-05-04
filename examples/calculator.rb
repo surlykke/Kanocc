@@ -76,7 +76,7 @@ end
 # Make a parser, give it 'Program' as the grammars startsymbol and run
 
 parser = Kanocc::Kanocc.new(Program)
-#parser.logger.level = Logger::DEBUG
+#parser.logger.level = Logger::INFO
 $source = <<-EOF
   2 * 3
   3 - 3 +

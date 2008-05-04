@@ -17,32 +17,29 @@
 #
 module Kanocc
   class GrammarRule
-    attr_reader :lhs, :rhs, :method, :argPositions
+    attr_reader :lhs, :rhs, :method, :operator_prec
     attr_accessor :prec 
 
     def initialize(lhs, rhs, method)
       @lhs = lhs
       @rhs = rhs
       @method = method
+      if (operator =rhs.find {|s| s.is_a?(String) or s.is_a?(Token)})
+        @operator_prec = Nonterminal.operator_precedence(operator) 
+      end
+      @prec = 0
       @logger.debug("#{lhs} --> #{rhs.map {|gs| gs.is_a?(Symbol) ? gs.to_s : gs}.join}, #prec = #{@prec}, method = #{method}") unless not @logger
     end
   
-    def operator
-      rhs.find {|s| s.is_a?(String) or s.is_a?(Token)}  
-    end
-    
-    def prec=(newPrec)
-      @prec = newPrec
-    end
-    
-    # The precedence of a rule is defined as:
-    # The given precedence
-    # or (if that's not defined) the precedence of the leftmost operator (token)
-    # or (if that's not defined) 0.
-    def prec
-      @prec or
-      ((o = operator) and (@lhs.operator_precedence(o))) or
-      0
+    def operator_prec
+      unless @operator_prec_calculated
+          operator = rhs.find {|s| s.is_a?(String) or s.is_a?(Token)}  
+          if operator
+            @operator_prec = lhs.operator_precedence(operator)
+          end
+          @operator_prec_calculated = true
+      end
+      @operator_prec
     end
     
     def inspect 
