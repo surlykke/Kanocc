@@ -44,7 +44,7 @@ require "logger"
 # ==========  Define a lexical grammar =============
 class Number < Kanocc::Token
   attr_reader :val
-  setPattern(/\d+/) {@val = eval @m[0]}
+  set_pattern(/\d+/) {@val = eval @m[0]}
 end
 
 # ==========  Define a grammar =====================
@@ -58,13 +58,13 @@ class Expr < Kanocc::Nonterminal
   rule("(", Expr, ")")   {@val = @rhs[1].val}
   rule(Number)           {@val = @rhs[0].val}
   
-  setOperatorPrecedence ['*', '/'], 2
+  set_operator_precedence ['*', '/'], 2
 end
 
 class Line < Kanocc::Nonterminal
   rule(Expr, "\n")   { p @rhs[0].val}
   rule(Kanocc::Error, "\n") do 
-    puts "Sorry - didn't understand: #{$source[startPos, endPos-startPos].inspect}"
+    puts "Sorry - didn't understand: #{$source[start_pos, end_pos-start_pos].inspect}"
   end
 end
 

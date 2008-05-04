@@ -41,7 +41,7 @@ module Kanocc
     # or (if that's not defined) 0.
     def prec
       @prec or
-      ((o = operator) and (@lhs.operatorPrecedence(o))) or
+      ((o = operator) and (@lhs.operator_precedence(o))) or
       0
     end
     

@@ -18,7 +18,7 @@
 require 'kanocc/grammar_rule'
 module Kanocc
   class Nonterminal
-    attr_accessor :startPos, :endPos
+    attr_accessor :start_pos, :end_pos
     @@rules = Hash.new
     @@lastRule = Hash.new
     @@derivesRight = Hash.new
@@ -28,15 +28,15 @@ module Kanocc
     Left = 1
     Right = 2
         
-    def Nonterminal.derivesRight
+    def Nonterminal.derives_right
       @@derivesRight[self] = true
     end
     
-    def Nonterminal.derivesRight?
+    def Nonterminal.derives_right?
       return @@derivesRight[self]
     end
    
-    def Nonterminal.setOperatorPrecedence(operator, precedence) 
+    def Nonterminal.set_operator_precedence(operator, precedence) 
       raise "Precedence must be an integer" unless precedence.class == Fixnum
       @@operatorPrecedence[self] ||= Hash.new 
       if is_an_operator?(operator)
@@ -48,7 +48,7 @@ module Kanocc
       end 
     end
  
-    def Nonterminal.operatorPrecedence(operator)
+    def Nonterminal.operator_precedence(operator)
       (@@operatorPrecedence[self] and @@operatorPrecedence[self][operator]) or 0
     end
 
@@ -66,7 +66,7 @@ module Kanocc
       return rules ? rules : []
     end
     
-    def Nonterminal.addRule(rule)
+    def Nonterminal.add_rule(rule)
       @@rules[self] ||= []
       @@rules[self].push(rule)
       @@lastRule[self] = rule
@@ -88,53 +88,53 @@ module Kanocc
       end
            
       if block_given?
-        methodName = generateMethodName(*rhs) 
-        define_method(methodName.to_sym, &block)
-        addRule(GrammarRule.new(self, rhs, methodName.to_sym))
+        method_name = generate_method_name(*rhs) 
+        define_method(method_name.to_sym, &block)
+        add_rule(GrammarRule.new(self, rhs, method_name.to_sym))
       else
-        addRule(GrammarRule.new(self, rhs, nil))
+        add_rule(GrammarRule.new(self, rhs, nil))
       end
     end
   
     def Nonterminal.zm(symbols, sep = nil)
-      listClass = newListClass 
-      listClass.rule() {@elements = []}
-      listClass.rule(om(symbols, sep)) {@elements = @rhs[0].elements}
-      return listClass
+      list_class = new_list_class 
+      list_class.rule() {@elements = []}
+      list_class.rule(om(symbols, sep)) {@elements = @rhs[0].elements}
+      return list_class
     end
     
     def Nonterminal.om(symbols, sep = nil)
       symbols = [symbols] unless symbols.is_a? Array
-      listClass = newListClass
-      listClass.rule(*symbols) {@elements = @rhs}
+      list_class = new_list_class
+      list_class.rule(*symbols) {@elements = @rhs}
       if sep
-        listClass.rule(listClass, sep, *symbols) {@elements = @rhs[0].elements + @rhs[2..@rhs.length]}
+        list_class.rule(list_class, sep, *symbols) {@elements = @rhs[0].elements + @rhs[2..@rhs.length]}
       else
-        listClass.rule(listClass, *symbols) {@elements = @rhs[0].elements + @rhs[1..@rhs.length]}
+        list_class.rule(list_class, *symbols) {@elements = @rhs[0].elements + @rhs[1..@rhs.length]}
       end
-      return listClass
+      return list_class
     end
     
     @@listClassNumber = 0
  
-    def Nonterminal.newListClass
-      listClass = Class.new(List)
+    def Nonterminal.new_list_class
+      list_class = Class.new(List)
       @@listClassNumber += 1
-      def listClass.inspect
+      def list_class.inspect
         return "anonList_#{@@listClassNumber}"
       end
-      return listClass
+      return list_class
     end
 
-    def Nonterminal.generateMethodName(*args)
-      methodName = self.name + " --> " + args.map {|a| a.inspect}.join(' ')
+    def Nonterminal.generate_method_name(*args)
+      method_name = self.name + " --> " + args.map {|a| a.inspect}.join(' ')
       @@methodNames[self] ||= []
       i = 1
-      while @@methodNames[self].member?(methodName) do 
-        methodName += ' ';
+      while @@methodNames[self].member?(method_name) do 
+        method_name += ' ';
       end
-      @@methodNames[self].push(methodName)
-      return methodName
+      @@methodNames[self].push(method_name)
+      return method_name
     end
   
     def Nonterminal.prec(p) 
@@ -142,7 +142,7 @@ module Kanocc
       @@lastRule[self].prec = p
     end
     
-    def Nonterminal.showMethodNames
+    def Nonterminal.show_method_names
       @@methodNames[self].each{|mn| puts mn.inspect} if @@methodNames[self]
     end
   end
@@ -153,10 +153,10 @@ module Kanocc
     
         protected
     # Assumes @rhs[0] is a Kanocc::List and that rhs.length > 1
-    def collect(stripSeparator = false)
-      puts "collect with stripSeparator = #{stripSeparator}"
+    def collect(strip_separator = false)
+      puts "collect with stripSeparator = #{strip_separator}"
       @elements = @rhs[0].elements
-      if stripSeparator
+      if strip_separator
         @elements = @elements + @rhs[2..@rhs.length]
       else
         @elements = @elements + @rhs[1..@rhs.length]

@@ -53,7 +53,7 @@ require 'logger'
 #    # ==========  Define a lexical grammar =============
 #    class NUM < Kanocc::Token
 #      attr_reader :val
-#      setPattern(/\d+/) { @val = @m[0].to_i}
+#      set_pattern(/\d+/) { @val = @m[0].to_i}
 #    end
 #    
 #    # ==========  Define a grammar ===================== 
@@ -83,11 +83,11 @@ module Kanocc
     attr_accessor :scanner, :parser, :logger
     
     # Creates a new instance of Kannocc, with the given start symbol.
-    # From the startsymbol, Kanocc will deduce the grammar and the 
+    # From the start_symbol, Kanocc will deduce the grammar and the 
     # grammarsymbols
     # 
-    def initialize(startSymbol)
-      @startSymbol = startSymbol 
+    def initialize(start_symbol)
+      @start_symbol = start_symbol 
       @logger = Logger.new(STDOUT)
       @logger.datetime_format = "" 
       @logger.level = Logger::WARN 
@@ -115,28 +115,28 @@ module Kanocc
     # - if parsing succeeds - return an instance of the grammars start symbol.
     # Input may be a String or an IO object.
     def parse(input)
-      raise "Start symbol not defined" unless @startSymbol
-      tellParserStartSymbol(@startSymbol) 
+      raise "Start symbol not defined" unless @start_symbol
+      tell_parser_start_symbol(@start_symbol) 
       @parser.prepare 
       @stack = []
       @inputPos = 0 
-      @scanner.eachToken(input) do |tokens, startPos, endPos|
-        @logger.info "got #{show(tokens)} from scanner at #{startPos}, #{endPos}"
+      @scanner.each_token(input) do |tokens, start_pos, end_pos|
+        @logger.info "got #{show(tokens)} from scanner at #{start_pos}, #{end_pos}"
         @logger.debug "Consume " + tokens.inspect if @logger
         @inputPos += 1
-        @parser.consume(tokens, startPos, endPos)
+        @parser.consume(tokens, start_pos, end_pos)
       end
       @parser.eof
       @stack[0]
     end
    
-    def parseFile(file)
+    def parse_file(file)
       if file.is_a? String # Then we assume it's a path	
 	file = File.open(File.expand_path(file))
-	openedFile = true
+	opened_file = true
       end
       input = file.read
-      file.close if openedFile
+      file.close if opened_file
       parse(input)
     end
     
@@ -144,35 +144,35 @@ module Kanocc
     # /\s/ as whitespace. 
     # whitespace takes a variable number of arguments, each of which must be a 
     # regular expression.
-    def setWhitespace(*ws)
-      @scanner.setWhitespace(*ws)
+    def set_whitespace(*ws)
+      @scanner.set_whitespace(*ws)
     end
     
     # Define which tokens Kanocc should recognize. If this method is not called
     # Kanocc will scan for those tokens that are mentioned in the grammar.
     # tokens= takes a variable number of arguments. Each argument must either be
     # a string or a class which is a subclass of Kanocc::Token
-    def setTokens(*tokens)
-      @scanner.setRecognized(*tokens)
+    def set_tokens(*tokens)
+      @scanner.set_recognized(*tokens)
     end
     
     # The parser must call this method when it have decided upon a reduction.
     # As arguments it should give the rule, by which to reduce. 
-    def reportReduction(rule, startPos, endPos) 
+    def report_reduction(rule, start_pos, end_pos) 
       @logger.info "Reducing by " + rule.inspect
       nonterminal = rule.lhs.new      
-      nonterminal.startPos = startPos
-      nonterminal.endPos = endPos
-      rightHandSide = @stack.slice!(-rule.rhs.length, rule.rhs.length)
-      rightHandSide = rightHandSide.map {|e| e.is_a?(List) ? e.elements : e} unless nonterminal.is_a? List
+      nonterminal.start_pos = start_pos
+      nonterminal.end_pos = end_pos
+      right_hand_side = @stack.slice!(-rule.rhs.length, rule.rhs.length)
+      right_hand_side = right_hand_side.map {|e| e.is_a?(List) ? e.elements : e} unless nonterminal.is_a? List
       if rule.method
-        oldRhs = nonterminal.instance_variable_get('@rhs')
-        nonterminal.instance_variable_set('@rhs', rightHandSide)
+        old_rhs = nonterminal.instance_variable_get('@rhs')
+        nonterminal.instance_variable_set('@rhs', right_hand_side)
         nonterminal.send(rule.method)
-        nonterminal.instance_variable_set('@rhs', oldRhs)
+        nonterminal.instance_variable_set('@rhs', old_rhs)
       end
       @stack.push(nonterminal)
-      showStack
+      show_stack
     end
     
    
@@ -181,30 +181,30 @@ module Kanocc
     # in the input string corresponding to the token. Positions should be given
     # as the position of the first character of the token and the position of the 
     # first character after the token.
-    def reportToken(token)
+    def report_token(token)
       @logger.info("Pushing token: " + token.inspect)
       @stack.push(token)
       if token.respond_to?("__recognize__") 
         token.__recognize__ 
       end
-      showStack 
+      show_stack 
     end
         
     
-    def tellParserStartSymbol(startSymbol)
-      @parser.startSymbol = startSymbol
-      bagOfTerminals = {}
-      findTokens(startSymbol, bagOfTerminals)
-      @logger.debug "tokens = " + bagOfTerminals.keys.inspect 
-      strings = bagOfTerminals.keys.find_all{|ter| ter.is_a? String} 
+    def tell_parser_start_symbol(start_symbol)
+      @parser.startsymbol = start_symbol
+      bag_of_terminals = {}
+      find_tokens(start_symbol, bag_of_terminals)
+      @logger.debug "tokens = " + bag_of_terminals.keys.inspect 
+      strings = bag_of_terminals.keys.find_all{|ter| ter.is_a? String} 
       @logger.info("Literals: " + strings.inspect)
-      tokens = bagOfTerminals.keys.find_all{|ter| ter.is_a? Class and ter.ancestors.member?(Token)}
+      tokens = bag_of_terminals.keys.find_all{|ter| ter.is_a? Class and ter.ancestors.member?(Token)}
       @logger.info("Tokens: " + tokens.inspect)
-      @scanner.setRecognized(*(strings + tokens))
+      @scanner.set_recognized(*(strings + tokens))
 
       # Show rules
       @logger.info("Rules:")
-      nonterminals = [startSymbol]
+      nonterminals = [start_symbol]
       nonterminals.each do |nonterminal|
         nonterminal.rules.each do |rule|
           @logger.info("  " + rule.inspect)
@@ -217,13 +217,13 @@ module Kanocc
       end
     end
     
-    def findTokens(nonterminal, collectedTokens,  visitedNonterminals = {})
-      unless visitedNonterminals[nonterminal]
-        visitedNonterminals[nonterminal] = true
+    def find_tokens(nonterminal, collectedTokens,  visited_nonterminals = {})
+      unless visited_nonterminals[nonterminal]
+        visited_nonterminals[nonterminal] = true
         nonterminal.rules.each do |r| 
           r.rhs.each do |gs|
             if gs.is_a?(Class) and gs.ancestors.member?(Nonterminal)
-              findTokens(gs, collectedTokens, visitedNonterminals)
+              find_tokens(gs, collectedTokens, visited_nonterminals)
             else
               collectedTokens[gs] = true 
             end
@@ -232,16 +232,16 @@ module Kanocc
       end
     end
     
-    def operatorPrecedence(rule)
+    def operator_precedence(rule)
       if operator = rule.operator
-        rule.lhs.operatorPrecedence(operator) || 0
+        rule.lhs.operator_precedence(operator) || 0
       else
         0
       end
     end
     
     # For debugging
-    def showStack
+    def show_stack
       @logger.info("Stack: [" + @stack.map {|gs| show(gs)}.join(", ") + "]" ) if @logger
     end
     

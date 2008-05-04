@@ -31,7 +31,7 @@ module Kanocc
       self.class == klass
     end
     
-    def Token.setPattern(reg, &block)
+    def Token.set_pattern(reg, &block)
       @@patterns[self] = reg
       if block_given?
         define_method(:__recognize__, &block)

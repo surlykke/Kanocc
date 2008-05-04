@@ -41,16 +41,17 @@ module Kanocc
       @kanocc = kanocc
       @logger = options[:logger] || Logger.new
     end
+
     #
     # Sets up the parser, creating itemlist 0.
     #
-    def startSymbol=(startSymbol)
-      @startSymbol = startSymbol
+    def startsymbol=(startSymbol)
+      @start_symbol = startSymbol
       @itemLists = [ItemList.new(nil, 0, 0)]
       @inputPos = 0
       @recoveryPoints = []
-      @itemLists[0].addAll(@startSymbol.rules.map{|rule| Item.new(rule, 0)})
-      predictAndComplete(0)
+      @itemLists[0].add_all(@start_symbol.rules.map{|rule| Item.new(rule, 0)})
+      predict_and_complete(0)
     end
     
     def prepare
@@ -66,28 +67,28 @@ module Kanocc
 
     def scan(terminals) 
       terminals.each do |terminal| 
-        @itemLists[@inputPos].addAll(@itemLists[@inputPos - 1].findMatching(terminal).map{|item| item.move})
+        @itemLists[@inputPos].add_all(@itemLists[@inputPos - 1].find_matching(terminal).map{|item| item.move})
       end
     end
     
-    def predictAndComplete(pos)
-      itemList = @itemLists[pos] 
-      prevSize = 0      
-      while prevSize < itemList.size do 
-        prevSize = itemList.size	
-	itemList.each do |item|
+    def predict_and_complete(pos)
+      item_list = @itemLists[pos] 
+      prev_size = 0      
+      while prev_size < item_list.size do 
+        prev_size = item_list.size	
+	item_list.each do |item|
 	  if item.rule.rhs.length <= item.dot
             # complete 
-	    itemList.addAll(@itemLists[item.j].findMatching(item.rule.lhs).map{|item| item.move})
+	    item_list.add_all(@itemLists[item.j].find_matching(item.rule.lhs).map{|item| item.move})
           elsif (nont = item.rule.rhs[item.dot]).respond_to?(:rules)  
             # predict
-	    itemList.addAll(nont.rules.map {|rule| Item.new(rule, @inputPos)})
+	    item_list.add_all(nont.rules.map {|rule| Item.new(rule, @inputPos)})
 	  end
         end
       end 
     end
     
-    def addRecoveryPoints(pos)
+    def add_recovery_points(pos)
       if @recoveryPoints[-1] != pos
 	@itemLists[pos].each do |item| 
 	  if Error == item.rule.rhs[item.dot]
@@ -114,14 +115,14 @@ module Kanocc
         for i in 1..@recoveryPoints.length do 
           if @recoveryPoints[-i] < @inputPos
             @itemLists[@inputPos - 1].add(Item.new(ErrorRule, @recoveryPoints[-i]))
-            predictAndComplete(@inputPos - 1) 
+            predict_and_complete(@inputPos - 1) 
 	    scan(inputSymbols) 
 	    break if @itemLists[@inputPos].size > 0 
           end
         end
       end
-      predictAndComplete(@inputPos) 
-      addRecoveryPoints(@inputPos)
+      predict_and_complete(@inputPos) 
+      add_recovery_points(@inputPos)
       @logger.info("Itemlist #{@inputPos}:\n" + @itemLists[@inputPos].inspect) if @logger
     end
    
@@ -131,9 +132,9 @@ module Kanocc
     #
     def eof
       @logger.debug "--- Parsing done, translating ---"
-      topItem = findFullItems(@startSymbol, @inputPos).find_all {|item| item.j == 0}.min
-      if topItem 
-        translate(topItem, @inputPos)
+      top_item = find_full_items(@start_symbol, @inputPos).find_all {|item| item.j == 0}.min
+      if top_item 
+        translate(top_item, @inputPos)
       else
         raise(KanoccException, "It didn't parse")
       end
@@ -142,19 +143,19 @@ module Kanocc
     def translate(element, pos)
       @logger.debug("translate: " + element.inspect + ", pos = " + pos.inspect)   
       if element.class == Item
-        translateHelper(element, pos) 
-        @kanocc.reportReduction(element.rule, 
+        translate_helper(element, pos) 
+        @kanocc.report_reduction(element.rule, 
                                 @itemLists[element.j].textPos, 
                                 @itemLists[pos].textPos)
       elsif element.class == Class # Its a token class
-	@kanocc.reportToken(@itemLists[pos].inputSymbol.find {|sym| sym.is_a? element})
+	@kanocc.report_token(@itemLists[pos].inputSymbol.find {|sym| sym.is_a? element})
       else # Its a string instance
         @logger.debug @itemLists[pos].inspect
-        @kanocc.reportToken(element)
+        @kanocc.report_token(element)
       end
     end
     
-    def translateHelper(item, pos)
+    def translate_helper(item, pos)
       @logger.debug("translateHelper: " + item.inspect) 
       return if item.dot == 0 
       if item.rule.rhs[item.dot - 1].respond_to?("rules")
@@ -163,12 +164,12 @@ module Kanocc
         # that there exists item of form [A --> a*Bc, k] on itemlist j
         
         # First: Items of form [B --> x*, j] on list i 
-        candidates = findFullItems(item.rule.rhs[item.dot - 1], pos)
+        candidates = find_full_items(item.rule.rhs[item.dot - 1], pos)
         
         # Then: Those for which item of form [A --> a*Bc, k] exists
         # on list j
         candidates = candidates.find_all {|subItem|
-          @itemLists[subItem.j].findItem(item.rule, item.dot - 1, item.j)
+          @itemLists[subItem.j].find_item(item.rule, item.dot - 1, item.j)
         }
         ##### 
         # Precedence handling is somewhat problematic in Earley parsing. 
@@ -179,26 +180,26 @@ module Kanocc
         # this will make the rule with the _highest_ precedence evaluate first.
         
         
-        subItem = candidates.min
-        prevItem = @itemLists[subItem.j].findItem(item.rule, item.dot - 1, item.j)
-        prevList = subItem.j
+        sub_item = candidates.min
+        prev_item = @itemLists[sub_item.j].find_item(item.rule, item.dot - 1, item.j)
+        prev_list = sub_item.j
       else
-        prevItem = @itemLists[pos - 1].findItem(item.rule, item.dot - 1, item.j)
-        prevList = pos - 1
-        subItem = item.rule.rhs[item.dot - 1]
+        prev_item = @itemLists[pos - 1].find_item(item.rule, item.dot - 1, item.j)
+        prev_list = pos - 1
+        sub_item = item.rule.rhs[item.dot - 1]
       end
-      translateHelper(prevItem, prevList)
-      translate(subItem, pos)
+      translate_helper(prev_item, prev_list)
+      translate(sub_item, pos)
     end
         
-    def findFullItems(nonterminal, inputPos)
+    def find_full_items(nonterminal, inputPos)
       @itemLists[inputPos].find_all do |item|
         item.rule.lhs == nonterminal and item.dot >= item.rule.rhs.length
       end
     end
     
-    def operatorPrecedence(rule)
-      - (@kanocc.operatorPrecedence(rule))
+    def operator_precedence(rule)
+      - (@kanocc.operator_precedence(rule))
     end
   end 
   
@@ -227,7 +228,7 @@ module Kanocc
       return @items.keys.find_all(&b)
     end
     
-    def findItem(rule, dot, j)
+    def find_item(rule, dot, j)
       return @items.keys.find{ |item| 
         item.rule == rule and 
         item.dot == dot and
@@ -235,15 +236,15 @@ module Kanocc
       }
     end
     
-    def eachMatching(inputSymbol)
-      findMatching(inputSymbol).each do |item| 
+    def each_matching(inputSymbol)
+      find_matching(inputSymbol).each do |item| 
         yield(item)
       end
     end
     
-    def findMatching(inputSymbol)
+    def find_matching(inputSymbol)
       @items.keys.find_all do |item| 
-        inputSymbol === item.symbolAfterDot or inputSymbol == item.symbolAfterDot
+        inputSymbol === item.symbol_after_dot or inputSymbol == item.symbol_after_dot
       end
     end
     
@@ -255,7 +256,7 @@ module Kanocc
       @items.store(item, true)
     end
     
-    def addAll(items)
+    def add_all(items)
       items.each {|item| @items.store(item, true)}
     end
 
@@ -285,7 +286,7 @@ module Kanocc
       return item
     end
     
-    def symbolAfterDot
+    def symbol_after_dot
       return @dot < @rule.rhs.size  ? @rule.rhs[@dot] : nil
     end
     

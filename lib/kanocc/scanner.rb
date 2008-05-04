@@ -29,22 +29,22 @@ module Kanocc
         @logger = Logger.new(STDOUT)
         @logger.level = Logger::WARN
       end
-      @wsRegs = [/\s/]
+      @ws_regs = [/\s/]
       @recognizables = []
       @regexps = []
     end
     
-    def setWhitespace(*wsRegs)
-      @wsRegs = []
-      wsRegs.each do |wsReg| 
+    def set_whitespace(*ws_regs)
+      @ws_regs = []
+      ws_regs.each do |wsReg| 
         unless wsReg.is_a?(Regexp)
           raise "setWhitespace must be given a list of Regexp's" 
         end
-        @wsRegs << r
+        @ws_regs << r
       end
     end
     
-    def setRecognized(*rec)
+    def set_recognized(*rec)
       @recognizables = []
       @regexps = []
       rec.each do |r| 
@@ -57,7 +57,7 @@ module Kanocc
       end
     end
     
-    def eachToken(input)
+    def each_token(input)
       if input.is_a?(IO) 
         @input = input.readlines.join("")
       elsif input.is_a?(String) 
@@ -67,7 +67,7 @@ module Kanocc
       end 
       @stringScanner = StringScanner.new(@input)
       pos = @stringScanner.pos 
-      while tokens = nextToken do
+      while tokens = next_token do
         @logger.debug("Yielding with #{tokens}, #{pos}, #{@stringScanner.pos}")
         yield(tokens, pos, @stringScanner.pos)
 	pos = @stringScanner.pos
@@ -76,18 +76,18 @@ module Kanocc
   
     private
     
-    def nextToken
+    def next_token
        
       while true do 
         if @stringScanner.pos >= @input.length
           return nil 
 	end
-	tokens = matchToken
+	tokens = match_token
         
 	if tokens.size > 0 
           @logger.debug("nextToken returning #{tokens}")
           return tokens
-        elsif trimWhitespace
+        elsif trim_whitespace
           # Now we've stripped some whitespace, so we go
           # back and try to match a token again
           next
@@ -102,12 +102,12 @@ module Kanocc
       end
     end
     
-    def matchToken
-      regPoss = findMatchingReg(@regexps) 
-      @logger.debug("matchToken, regPoss = #{regPoss.inspect}");  
+    def match_token
+      reg_poss = find_matching_reg(@regexps) 
+      @logger.debug("matchToken, regPoss = #{reg_poss.inspect}");  
       tokens = []
       str = nil
-      regPoss.each do |i|
+      reg_poss.each do |i|
         logger.debug("@recognizables[#{i}] = #{@recognizables[i].inspect}") 
         str = @stringScanner.scan(@regexps[i]) unless str 
 	if @recognizables[i].class == Class
@@ -125,30 +125,30 @@ module Kanocc
       return tokens  
     end
     
-    def trimWhitespace
-      wsPoss = findMatchingReg(@wsRegs)
-      if  wsPoss.size > 0
-	@stringScanner.skip(@wsRegs[wsPoss[0]])
+    def trim_whitespace
+      ws_poss = find_matching_reg(@ws_regs)
+      if  ws_poss.size > 0
+	@stringScanner.skip(@ws_regs[ws_poss[0]])
         return true
       else
 	return false
       end
     end
         
-    def findMatchingReg(arrayOfRegs)
+    def find_matching_reg(arrayOfRegs)
       @logger.debug("findMatchingReg: arrayOfRegs = #{arrayOfRegs}")
-      maxLength = 0
-      regPoss = []
+      max_length = 0
+      reg_poss = []
       for i in 0..arrayOfRegs.size-1 do 
 	len = @stringScanner.match?(arrayOfRegs[i]) || 0	
-	if len > maxLength
-	  regPoss = [i]
-	  maxLength = len
-	elsif len == maxLength and len > 0
-	  regPoss << i
+	if len > max_length
+	  reg_poss = [i]
+	  max_length = len
+	elsif len == max_length and len > 0
+	  reg_poss << i
 	end
       end
-      return regPoss
+      return reg_poss
     end
   end
 end
@@ -159,11 +159,11 @@ end
 #require 'Token'
 #
 #class Number < Token
-#  setPattern(/\d+/)
+#  set_pattern(/\d+/)
 #end
 #
 #scanner = KanoccScanner.new
-#scanner.setRecognized(Number, "Exit")
-#scanner.setWhitespace(/[ \t]/)
+#scanner.set_recognized(Number, "Exit")
+#scanner.set_whitespace(/[ \t]/)
 #
 #scanner.eachTokenDo{|token|  print token.inspect, "\n"}
