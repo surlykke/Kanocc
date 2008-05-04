@@ -36,11 +36,11 @@ module Kanocc
     
     def set_whitespace(*ws_regs)
       @ws_regs = []
-      ws_regs.each do |wsReg| 
-        unless wsReg.is_a?(Regexp)
+      ws_regs.each do |ws_reg| 
+        unless ws_reg.is_a?(Regexp)
           raise "setWhitespace must be given a list of Regexp's" 
         end
-        @ws_regs << r
+        @ws_regs << ws_reg
       end
     end
     
