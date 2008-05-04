@@ -20,36 +20,36 @@ module Kanocc
   class Nonterminal
     attr_accessor :start_pos, :end_pos
     @@rules = Hash.new
-    @@lastRule = Hash.new
-    @@derivesRight = Hash.new
-    @@operatorPrecedence = Hash.new
-    @@methodNames = Hash.new
+    @@last_rule = Hash.new
+    @@derives_right = Hash.new
+    @@operator_precedence = Hash.new
+    @@method_names = Hash.new
     
     Left = 1
     Right = 2
         
     def Nonterminal.derives_right
-      @@derivesRight[self] = true
+      @@derives_right[self] = true
     end
     
     def Nonterminal.derives_right?
-      return @@derivesRight[self]
+      return @@derives_right[self]
     end
    
     def Nonterminal.set_operator_precedence(operator, precedence) 
       raise "Precedence must be an integer" unless precedence.class == Fixnum
-      @@operatorPrecedence[self] ||= Hash.new 
+      @@operator_precedence[self] ||= Hash.new 
       if is_an_operator?(operator)
-        @@operatorPrecedence[self][operator] = precedence
+        @@operator_precedence[self][operator] = precedence
       elsif is_an_array_of_operators(operator)
-        operator.each {|o| @@operatorPrecedence[self][o] = precedence}
+        operator.each {|o| @@operator_precedence[self][o] = precedence}
       else
         raise "Operator must be a string, a token or an array of those"  
       end 
     end
  
     def Nonterminal.operator_precedence(operator)
-      (@@operatorPrecedence[self] and @@operatorPrecedence[self][operator]) or 0
+      (@@operator_precedence[self] and @@operator_precedence[self][operator]) or 0
     end
 
     def Nonterminal.is_an_array_of_operators(arr) 
@@ -69,7 +69,7 @@ module Kanocc
     def Nonterminal.add_rule(rule)
       @@rules[self] ||= []
       @@rules[self].push(rule)
-      @@lastRule[self] = rule
+      @@last_rule[self] = rule
     end
     
     def Nonterminal.is_a_grammarsymbol?(x) 
@@ -128,22 +128,22 @@ module Kanocc
 
     def Nonterminal.generate_method_name(*args)
       method_name = self.name + " --> " + args.map {|a| a.inspect}.join(' ')
-      @@methodNames[self] ||= []
+      @@method_names[self] ||= []
       i = 1
-      while @@methodNames[self].member?(method_name) do 
+      while @@method_names[self].member?(method_name) do 
         method_name += ' ';
       end
-      @@methodNames[self].push(method_name)
+      @@method_names[self].push(method_name)
       return method_name
     end
   
     def Nonterminal.prec(p) 
-      raise "Call to prec not preceded by rule" unless @@lastRule[self]
-      @@lastRule[self].prec = p
+      raise "Call to prec not preceded by rule" unless @@last_rule[self]
+      @@last_rule[self].prec = p
     end
     
     def Nonterminal.show_method_names
-      @@methodNames[self].each{|mn| puts mn.inspect} if @@methodNames[self]
+      @@method_names[self].each{|mn| puts mn.inspect} if @@method_names[self]
     end
   end
   
