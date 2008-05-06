@@ -19,16 +19,18 @@
 #  version 3 along with Kanocc.  If not, see <http://www.gnu.org/licenses/>.
 #
 libdir = File.expand_path(File.join(File.dirname(__FILE__), "..", "lib"))
-$:.unshift(libdir)
-require "kanocc.rb"
+#$:.unshift(libdir)
+#require "kanocc.rb"
+require 'rubygems'
+require 'kanocc'
 require "logger"
 #require "breakpoint"
 
 # Example use of Kanocc for a small calculator program.
 # It implements the grammar:
 #
-# Program ::=
-#           | Program Expr '\n'R
+# Program ::= Line+ 
+# Line    ::= Expr "\n"
 # Expr    ::= Expr '+' Expr 
 #           | Expr '-' Expr 
 #           | Expr '*' Expr 
@@ -69,14 +71,14 @@ class Line < Kanocc::Nonterminal
 end
 
 class Program < Kanocc::Nonterminal
-  rule(Program, Line)
-  rule()
+  rule(zm(Line))
 end
 
-# Make a parser, give it 'Program' as the grammars startsymbol and run
+# Make a parser, give it 'Program' as the grammars startsymbol
 
 parser = Kanocc::Kanocc.new(Program)
-#parser.logger.level = Logger::INFO
+
+# Feed it some input
 $source = <<-EOF
   2 * 3
   3 - 3 +
@@ -84,5 +86,7 @@ $source = <<-EOF
   3 * 2 + 4
   4 + 3 * 3
 EOF
+puts "parsing: \n" + $source
 
+# and go
 parser.parse($source)

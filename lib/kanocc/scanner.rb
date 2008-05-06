@@ -151,6 +151,7 @@ module Kanocc
       return reg_poss
     end
   end
+  
 end
 
 

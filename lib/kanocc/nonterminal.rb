@@ -154,14 +154,12 @@ module Kanocc
         protected
     # Assumes @rhs[0] is a Kanocc::List and that rhs.length > 1
     def collect(strip_separator = false)
-      puts "collect with stripSeparator = #{strip_separator}"
       @elements = @rhs[0].elements
       if strip_separator
         @elements = @elements + @rhs[2..@rhs.length]
       else
         @elements = @elements + @rhs[1..@rhs.length]
       end
-      puts "@elements: " + @elements.inspect
     end
   end
 

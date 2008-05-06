@@ -121,7 +121,7 @@ module Kanocc
       @stack = []
       @inputPos = 0 
       @scanner.each_token(input) do |tokens, start_pos, end_pos|
-        @logger.info "got #{show(tokens)} from scanner at #{start_pos}, #{end_pos}"
+        @logger.info "got #{show_grammar_symbols(tokens)} from scanner at #{start_pos}, #{end_pos}"
         @logger.debug "Consume " + tokens.inspect if @logger
         @inputPos += 1
         @parser.consume(tokens, start_pos, end_pos)
@@ -234,17 +234,20 @@ module Kanocc
         
     # For debugging
     def show_stack
-      @logger.info("Stack: [" + @stack.map {|gs| show(gs)}.join(", ") + "]" ) if @logger
+      @logger.info("Stack: [" + @stack.map {|gs| show_grammar_symbol(gs)}.join(", ") + "]" ) if @logger
     end
     
-    def show(gs)
+    def show_grammar_symbols(tokens)
+      "[" + tokens.map{|token| show_grammar_symbol(token)}.join(", ") + "]"
+    end
+    
+    def show_grammar_symbol(gs) 
       if gs.is_a?(Nonterminal) or gs.is_a?(Token)
         gs.class.to_s; 
-      elsif gs.is_a?(String)
-        gs.inspect; 
+      else 
+        gs
       end
     end
-    
   
   end
   

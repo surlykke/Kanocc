@@ -131,8 +131,7 @@ module Kanocc
     # Signal to the parser that end of input is reached
     #
     def eof
-      @logger.debug "--- Parsing done, translating ---"
-      top_item = find_full_items(@start_symbol, @inputPos).find_all {|item| item.j == 0}.min
+      top_item = find_full_items(@start_symbol, @inputPos).find_all {|item| item.j == 0}.max
       if top_item 
         translate(top_item, @inputPos)
       else
@@ -173,7 +172,7 @@ module Kanocc
         }
         
         ##### 
-        # Precedence: We pick the posibility with the _higest_ precedence
+        # Precedence: We pick the posibility with the higest precedence
         sub_item = candidates.max
         prev_item = @itemLists[sub_item.j].find_item(item.rule, item.dot - 1, item.j)
         prev_list = sub_item.j
@@ -300,21 +299,9 @@ module Kanocc
     end
   
     def <=>(other)
-      puts "Comparing #{self.inspect} and #{other.inspect}"
-      if (@rule.operator_prec and other.rule.operator_prec)
-        res = other.rule.operator_prec <=> @rule.operator_prec
-      elsif ((tmp = (@rule.prec <=> other.rule.prec)) != 0)
-        res = tmp
-      else
-        res = @j <=> other.j 
-      end
-      if res < 0 
-         puts "bigger: #{other.inspect}"
-      elsif res > 0
-        puts "bigger: #{self.inspect}"
-      else
-        puts "equal"
-      end
+      res = @rule.prec <=> other.rule.prec;
+      res = @rule.operator_prec and other.rule.operator_prec if res == 0
+      res = @j <=> other.j if res == 0
       return res
     end
   end
