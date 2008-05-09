@@ -65,9 +65,10 @@ module Kanocc
       @logger.info("Itemlist 0:\n" + @itemLists[0].inspect) unless not @logger
     end
 
-    def scan(terminals) 
-      terminals.each do |terminal| 
-        @itemLists[@inputPos].add_all(@itemLists[@inputPos - 1].find_matching(terminal).map{|item| item.move})
+   
+    def scan(token_match) 
+      token_match.tokens.each do |token| 
+        @itemLists[@inputPos].add_all(@itemLists[@inputPos - 1].find_matching(token).map{|item| item.move})
       end
     end
     
@@ -98,25 +99,25 @@ module Kanocc
 	end
       end
     end
-
+   
     #
     # Consume and parse next input symbol
     #
-    def consume(inputSymbols, startPos, endPos) 
+    def consume(token_match) 
       @inputPos += 1
-      @itemLists.push(ItemList.new(inputSymbols, @inputPos, endPos))
+      @itemLists.push(ItemList.new(token_match, @inputPos, 0))
   
       # scan, predict and complete until no more can be added
-      scan(inputSymbols)
+      scan(token_match)
       
       if @itemLists[@inputPos].size == 0
-        @logger.debug("Found no items matching #{inputSymbols} in itemlist #{@inputPos - 1}")
+        @logger.debug("Found no items matching #{token_match} in itemlist #{@inputPos - 1}")
         @logger.debug("@recoveryPoints = " + @recoveryPoints.inspect)	
         for i in 1..@recoveryPoints.length do 
           if @recoveryPoints[-i] < @inputPos
             @itemLists[@inputPos - 1].add(Item.new(ErrorRule, @recoveryPoints[-i]))
             predict_and_complete(@inputPos - 1) 
-	    scan(inputSymbols) 
+	    scan(token_match) 
 	    break if @itemLists[@inputPos].size > 0 
           end
         end
@@ -127,6 +128,8 @@ module Kanocc
     end
    
     
+
+
     #
     # Signal to the parser that end of input is reached
     #
@@ -146,11 +149,8 @@ module Kanocc
         @kanocc.report_reduction(element.rule, 
                                 @itemLists[element.j].textPos, 
                                 @itemLists[pos].textPos)
-      elsif element.class == Class # Its a token class
-	@kanocc.report_token(@itemLists[pos].inputSymbol.find {|sym| sym.is_a? element})
-      else # Its a string instance
-        @logger.debug @itemLists[pos].inspect
-        @kanocc.report_token(element)
+      else  # Its a token or a string
+	@kanocc.report_token(@itemLists[pos].inputSymbol, element)
       end
     end
     
@@ -171,7 +171,6 @@ module Kanocc
           @itemLists[subItem.j].find_item(item.rule, item.dot - 1, item.j)
         }
         
-        ##### 
         # Precedence: We pick the posibility with the higest precedence
         sub_item = candidates.max
         prev_item = @itemLists[sub_item.j].find_item(item.rule, item.dot - 1, item.j)
@@ -184,7 +183,9 @@ module Kanocc
       translate_helper(prev_item, prev_list)
       translate(sub_item, pos)
     end
-        
+
+    
+    
     def find_full_items(nonterminal, inputPos)
       @itemLists[inputPos].find_all do |item|
         item.rule.lhs == nonterminal and item.dot >= item.rule.rhs.length
@@ -300,8 +301,12 @@ module Kanocc
   
     def <=>(other)
       res = @rule.prec <=> other.rule.prec;
-      res = @rule.operator_prec and other.rule.operator_prec if res == 0
-      res = @j <=> other.j if res == 0
+      if res == 0 and @rule.operator_prec and other.rule.operator_prec 
+         res = other.rule.operator_prec <=> @rule.operator_prec
+      end
+      if res == 0
+        res = @j <=> other.j 
+      end
       return res
     end
   end

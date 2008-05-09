@@ -19,10 +19,10 @@
 #  version 3 along with Kanocc.  If not, see <http://www.gnu.org/licenses/>.
 #
 libdir = File.expand_path(File.join(File.dirname(__FILE__), "..", "lib"))
-#$:.unshift(libdir)
-#require "kanocc.rb"
-require 'rubygems'
-require 'kanocc'
+$:.unshift(libdir)
+require "kanocc.rb"
+#require 'rubygems'
+#require 'kanocc'
 require "logger"
 #require "breakpoint"
 
@@ -77,6 +77,7 @@ end
 # Make a parser, give it 'Program' as the grammars startsymbol
 
 parser = Kanocc::Kanocc.new(Program)
+#parser.logger.level = Logger::DEBUG
 
 # Feed it some input
 $source = <<-EOF

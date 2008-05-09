@@ -120,11 +120,10 @@ module Kanocc
       @parser.prepare 
       @stack = []
       @inputPos = 0 
-      @scanner.each_token(input) do |tokens, start_pos, end_pos|
-        @logger.info "got #{show_grammar_symbols(tokens)} from scanner at #{start_pos}, #{end_pos}"
-        @logger.debug "Consume " + tokens.inspect if @logger
+      @scanner.each_token(input) do |token_match|
+        @logger.info "got #{token_match} from scanner"
         @inputPos += 1
-        @parser.consume(tokens, start_pos, end_pos)
+        @parser.consume(token_match)
       end
       @parser.eof
       @stack[0]
@@ -181,12 +180,17 @@ module Kanocc
     # in the input string corresponding to the token. Positions should be given
     # as the position of the first character of the token and the position of the 
     # first character after the token.
-    def report_token(token)
-      @logger.info("Pushing token: " + token.inspect)
-      @stack.push(token)
-      if token.respond_to?("__recognize__") 
-        token.__recognize__ 
+    def report_token(tokenmatch, element)
+      @logger.info("Pushing token: " + element.inspect)
+      matched_token = tokenmatch.tokens.find {|mt| mt == element}
+      if matched_token.is_a? Class # It's a Token 
+        token = matched_token.new(tokenmatch.string)
+        token.m = token.match(tokenmatch.string)
+        token.__recognize__ if token.respond_to?("__recognize__") 
+      else # It's a string literal
+        token = matched_token
       end
+      @stack.push(token)
       show_stack 
     end
         
@@ -251,6 +255,30 @@ module Kanocc
   
   end
   
+  class TokenMatch
+    attr_reader :tokens, :string, :start_pos, :length
+    
+    def initialize(tokens, string, start_pos, length)
+      @tokens, @string, @start_pos, @length = tokens, string, start_pos, length
+    end
+    
+    def inspect
+      "#{tokens}, '#{string}', #{start_pos}, #{length}"
+    end
+  end
+  
+  class WhitespaceMatch
+    attr_reader :string, :start_pos, :length
+    
+    def initialize(string, start_pos, length)
+      @string, @start_pos, @length = string, start_pos, length
+    end
+    
+    def inspect 
+      "'#{string}', #{start_pos}, #{length}"
+    end
+  end
+
   class ParseException < Exception 
     attr_accessor :inputPos, :inputSymbol, :expected 
     def initialize(inputPos, inputSymbol, expected)

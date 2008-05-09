@@ -2,7 +2,8 @@
 #  Copyright 2008 Christian Surlykke
 #
 #  This file is part of Kanocc.
-#
+#require 'logger'
+
 #  Kanocc is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License, version 3 
 #  as published by the Free Software Foundation.
@@ -17,8 +18,7 @@
 #
 require 'stringio'
 require 'strscan'
-require 'logger'
-
+require "logger"
 module Kanocc
   class Scanner
     attr_accessor :logger
@@ -38,7 +38,7 @@ module Kanocc
       @ws_regs = []
       ws_regs.each do |ws_reg| 
         unless ws_reg.is_a?(Regexp)
-          raise "setWhitespace must be given a list of Regexp's" 
+          raise "set_whitespace must be given a list of Regexp's" 
         end
         @ws_regs << ws_reg
       end
@@ -49,10 +49,14 @@ module Kanocc
       @regexps = []
       rec.each do |r| 
         @recognizables << r
-        if r.class == Class
+        c = Class.new
+        c.ancestors
+        if r.class == Class and r.ancestors.include?(Token)
 	  @regexps << r.pattern
-        else
+        elsif r.is_a? String
           @regexps << Regexp.compile(Regexp.escape(r))
+        else
+          raise "set_recognized must be given a list of Tokens classes and or strings"
         end
       end
     end
@@ -65,90 +69,75 @@ module Kanocc
       else
         raise "Input must be a string or an IO object"
       end 
+
       @stringScanner = StringScanner.new(@input)
-      pos = @stringScanner.pos 
-      while tokens = next_token do
-        @logger.debug("Yielding with #{tokens}, #{pos}, #{@stringScanner.pos}")
-        yield(tokens, pos, @stringScanner.pos)
-	pos = @stringScanner.pos
+      while match = do_match do
+        if match.is_a? TokenMatch
+          @logger.debug("Yielding #{match}")
+          yield(match)
+        end
+        @stringScanner.pos += match.length
       end
     end
-  
+
     private
     
-    def next_token
-       
-      while true do 
-        if @stringScanner.pos >= @input.length
-          return nil 
-	end
-	tokens = match_token
-        
-	if tokens.size > 0 
-          @logger.debug("nextToken returning #{tokens}")
-          return tokens
-        elsif trim_whitespace
-          # Now we've stripped some whitespace, so we go
-          # back and try to match a token again
-          next
-        else
-          # We've not been able to recognize a token or whitespace, 
-          # so we emit the first character of the remaining input as a string literal.
-          # With this behavior, lexical scanning cannot fail.
-          res = [@stringScanner.scan(/./m)]
-          @logger.debug("nextToken returning #{res.inspect}")
-          return res 
-        end
+    def do_match
+      if @stringScanner.pos >= @stringScanner.string.length
+        return nil;
       end
-    end
-    
-    def match_token
-      reg_poss = find_matching_reg(@regexps) 
-      @logger.debug("matchToken, regPoss = #{reg_poss.inspect}");  
-      tokens = []
-      str = nil
-      reg_poss.each do |i|
-        logger.debug("@recognizables[#{i}] = #{@recognizables[i].inspect}") 
-        str = @stringScanner.scan(@regexps[i]) unless str 
-	if @recognizables[i].class == Class
-	  @logger.debug("Its a class")
-	  token = @recognizables[i].new(str)
-	  token.m = token.match(str) # To create a proper match object
-	  @logger.debug("token: " + token.inspect) 
-	  tokens << token 
-	  @logger.debug("tokens: " + tokens.inspect)
-	else
-	  tokens << str
-        end
+      
+      token_match = match_token
+      whitespace_match = match_whitespace
+      
+      if whitespace_match.length > token_match.length
+        return whitespace_match
       end
-      @logger.debug("matchToken returning: " + tokens.inspect)
-      return tokens  
-    end
-    
-    def trim_whitespace
-      ws_poss = find_matching_reg(@ws_regs)
-      if  ws_poss.size > 0
-	@stringScanner.skip(@ws_regs[ws_poss[0]])
-        return true
+
+      if token_match.length == 0
+        # So we've not been able to match tokens nor whitespace.
+        # We return the first character of the remaining input as a string
+        # literal
+        string = @stringScanner.string.slice(@stringScanner.pos, @stringScanner.pos + 1)
+        return TokenMatch.new([string], string, @stringScanner.pos, 1)
       else
-	return false
+        return token_match
       end
     end
-        
-    def find_matching_reg(arrayOfRegs)
-      @logger.debug("findMatchingReg: arrayOfRegs = #{arrayOfRegs}")
-      max_length = 0
-      reg_poss = []
-      for i in 0..arrayOfRegs.size-1 do 
-	len = @stringScanner.match?(arrayOfRegs[i]) || 0	
-	if len > max_length
-	  reg_poss = [i]
-	  max_length = len
-	elsif len == max_length and len > 0
-	  reg_poss << i
-	end
+
+    def match_token
+      matches = []
+      max_length = 0 
+      for i in 0..@regexps.size-1 do
+         len = @stringScanner.match?(@regexps[i]) || 0
+         if len > 0
+           if len > max_length
+             # Now, we have a match longer than whatever we had, 
+             # so we discharge what we had, and save the new one
+             matches = [@recognizables[i]]
+             max_length = len
+           elsif len == max_length
+             # This regular expression matches a string of same length 
+             # as our previous match, so we prepare to return both
+             matches << @recognizables[i]
+           end
+         end
       end
-      return reg_poss
+      start_pos = @stringScanner.pos
+      string = @stringScanner.string.slice(start_pos, max_length)
+      return TokenMatch.new(matches, string, start_pos, max_length)
+    end
+    
+    def match_whitespace
+      max_length = 0
+      for i in 0..@ws_regs.size - 1 do
+        len = @stringScanner.match?(@ws_regs[i]) || 0
+        if len > max_length
+          max_length = len
+        end
+      end
+      string = @stringScanner.string.slice(@stringScanner.pos, max_length)        
+      return WhitespaceMatch.new(string, @stringScanner.pos, max_length)
     end
   end
   

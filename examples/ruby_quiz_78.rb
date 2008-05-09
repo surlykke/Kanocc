@@ -62,4 +62,4 @@ packageChecker = Kanocc::Kanocc.new(Package)
 # And go
 puts "[(B)] becomes " + packageChecker.parse('[(B)]').val
 puts "[[B] becomes " + packageChecker.parse('[[B]').val
-puts "[(B)]](B){{(B)] becomes" + packageChecker.parse("[(B)]](B){{(B)]").val
+puts "[(B)]](B){{(B)] becomes " + packageChecker.parse("[(B)]](B){{(B)]").val
