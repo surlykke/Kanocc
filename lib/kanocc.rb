@@ -25,6 +25,10 @@ require 'kanocc/scanner'
 require 'kanocc/earley'
 require 'logger'
 
+class String
+  attr_accessor :start_pos, :end_pos
+end
+
 # = Kanocc - Kanocc ain't no compiler-compiler
 #
 # Kanocc is a ruby-framework for parsing and translating.
@@ -157,23 +161,35 @@ module Kanocc
     
     # The parser must call this method when it have decided upon a reduction.
     # As arguments it should give the rule, by which to reduce. 
-    def report_reduction(rule, start_pos, end_pos) 
+    def report_reduction(rule) 
       @logger.info "Reducing by " + rule.inspect
+      raise "Fatal: stack too short!" if @stack.length < rule.rhs.length
       nonterminal = rule.lhs.new      
-      nonterminal.start_pos = start_pos
-      nonterminal.end_pos = end_pos
+      nonterminal.start_pos, nonterminal.end_pos = calculate_start_and_end_pos(rule)
+      evaluate_semantics_and_pop(rule, nonterminal)
+      @stack.push(nonterminal)
+      show_stack
+    end
+    
+    def calculate_start_and_end_pos(rule)
+      if rule.rhs.length > 0
+        return @stack[-rule.rhs.length].start_pos, @stack[-1].end_pos
+      elsif @stack.length > 0
+        return @stack[-1].end_pos, @stack[-1].end_pos
+      else
+        return 0,0
+      end  
+    end
+
+    def evaluate_semantics_and_pop(rule, nonterminal)
       right_hand_side = @stack.slice!(-rule.rhs.length, rule.rhs.length)
-      right_hand_side = right_hand_side.map {|e| e.is_a?(List) ? e.elements : e} unless nonterminal.is_a? List
       if rule.method
         old_rhs = nonterminal.instance_variable_get('@rhs')
         nonterminal.instance_variable_set('@rhs', right_hand_side)
         nonterminal.send(rule.method)
         nonterminal.instance_variable_set('@rhs', old_rhs)
       end
-      @stack.push(nonterminal)
-      show_stack
-    end
-    
+    end    
    
     # The parser must call this method when it consumes a token
     # As argument it should give the consumed token and the positions 
@@ -184,12 +200,14 @@ module Kanocc
       @logger.info("Pushing token: " + element.inspect)
       matched_token = tokenmatch.tokens.find {|mt| mt == element}
       if matched_token.is_a? Class # It's a Token 
-        token = matched_token.new(tokenmatch.string)
+        token = matched_token.new
         token.m = token.match(tokenmatch.string)
         token.__recognize__ if token.respond_to?("__recognize__") 
       else # It's a string literal
-        token = matched_token
+        token = String.new(matched_token)
       end
+      token.start_pos = tokenmatch.start_pos
+      token.end_pos = token.start_pos + tokenmatch.length
       @stack.push(token)
       show_stack 
     end
@@ -246,10 +264,12 @@ module Kanocc
     end
     
     def show_grammar_symbol(gs) 
-      if gs.is_a?(Nonterminal) or gs.is_a?(Token)
-        gs.class.to_s; 
+      if gs.is_a?(Token)
+        "#{gs.class}(#{gs.m[0].inspect}, #{gs.start_pos}, #{gs.end_pos})" 
+      elsif gs.is_a?(Nonterminal) 
+        "#{gs.class}(#{gs.start_pos}, #{gs.end_pos})"
       else 
-        gs
+        gs.inspect
       end
     end
   
@@ -263,7 +283,7 @@ module Kanocc
     end
     
     def inspect
-      "#{tokens}, '#{string}', #{start_pos}, #{length}"
+      "#{tokens.inspect}, #{string.inspect}, #{start_pos}, #{length}"
     end
   end
   

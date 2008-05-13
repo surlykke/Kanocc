@@ -17,13 +17,11 @@
 #
 module Kanocc
   class Token < Regexp
-    attr_reader :str
-    attr_accessor :m
+    attr_accessor :m, :start_pos, :end_pos
     
     @@patterns = Hash.new
   
-    def initialize(str)
-      @str = str
+    def initialize
       super(@@patterns[self.class])
     end
       

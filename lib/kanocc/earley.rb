@@ -47,7 +47,7 @@ module Kanocc
     #
     def startsymbol=(startSymbol)
       @start_symbol = startSymbol
-      @itemLists = [ItemList.new(nil, 0, 0)]
+      @itemLists = [ItemList.new(nil, 0)]
       @inputPos = 0
       @recoveryPoints = []
       @itemLists[0].add_all(@start_symbol.rules.map{|rule| Item.new(rule, 0)})
@@ -105,7 +105,7 @@ module Kanocc
     #
     def consume(token_match) 
       @inputPos += 1
-      @itemLists.push(ItemList.new(token_match, @inputPos, 0))
+      @itemLists.push(ItemList.new(token_match, @inputPos))
   
       # scan, predict and complete until no more can be added
       scan(token_match)
@@ -146,9 +146,7 @@ module Kanocc
       @logger.debug("translate: " + element.inspect + " on " + pos.inspect)   
       if element.class == Item
         translate_helper(element, pos) 
-        @kanocc.report_reduction(element.rule, 
-                                @itemLists[element.j].textPos, 
-                                @itemLists[pos].textPos)
+        @kanocc.report_reduction(element.rule)
       else  # Its a token or a string
 	@kanocc.report_token(@itemLists[pos].inputSymbol, element)
       end
@@ -194,13 +192,12 @@ module Kanocc
   end 
   
   class ItemList
-    attr_reader :inputSymbol, :textPos
+    attr_reader :inputSymbol
     attr_accessor :items
     
-    def initialize(inputSymbol, inputPos, textPos)
+    def initialize(inputSymbol, inputPos)
       @inputPos = inputPos
       @inputSymbol = inputSymbol
-      @textPos = textPos
       @items = Hash.new 
     end
     
@@ -258,7 +255,6 @@ module Kanocc
     
     def inspect
       return "[" + @inputSymbol.inspect + "\n " + 
-                   @textPos.to_s + "\n " +
                    @items.keys.map{|item| item.inspect}.join("\n  ") + "]\n" 
     end
   end

@@ -66,18 +66,19 @@ end
 class Line < Kanocc::Nonterminal
   rule(Expr, "\n")   { p @rhs[0].val}
   rule(Kanocc::Error, "\n") do 
-    puts "Sorry - didn't understand: #{$source[start_pos, end_pos-start_pos].inspect}"
+    puts "Sorry - didn't understand: #{$source[start_pos, end_pos - start_pos].inspect}"
   end
 end
 
 class Program < Kanocc::Nonterminal
-  rule(zm(Line))
+  rule(Program, Line)
+  rule()
 end
 
 # Make a parser, give it 'Program' as the grammars startsymbol
 
 parser = Kanocc::Kanocc.new(Program)
-#parser.logger.level = Logger::DEBUG
+#parser.logger.level = Logger::INFO
 
 # Feed it some input
 $source = <<-EOF
