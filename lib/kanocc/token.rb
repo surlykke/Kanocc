@@ -16,15 +16,11 @@
 #  version 3 along with Kanocc.  If not, see <http://www.gnu.org/licenses/>.
 #
 module Kanocc
-  class Token < Regexp
+  class Token
     attr_accessor :m, :start_pos, :end_pos
     
     @@patterns = Hash.new
   
-    def initialize
-      super(@@patterns[self.class])
-    end
-      
     def ===(klass)
       self.class == klass
     end

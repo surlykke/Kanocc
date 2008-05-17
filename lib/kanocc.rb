@@ -125,7 +125,7 @@ module Kanocc
       @stack = []
       @inputPos = 0 
       @scanner.each_token(input) do |token_match|
-        @logger.info "got #{token_match} from scanner"
+        @logger.info "got #{token_match.inspect} from scanner"
         @inputPos += 1
         @parser.consume(token_match)
       end
@@ -198,13 +198,15 @@ module Kanocc
     # first character after the token.
     def report_token(tokenmatch, element)
       @logger.info("Pushing token: " + element.inspect)
-      matched_token = tokenmatch.tokens.find {|mt| mt == element}
+      matched_token_pos = (0..tokenmatch.regexps.length).find {|i| tokenmatch.classes[i] == element}
+      matched_token = tokenmatch.classes[matched_token_pos]
       if matched_token.is_a? Class # It's a Token 
         token = matched_token.new
-        token.m = token.match(tokenmatch.string)
+        regexp = tokenmatch.regexps[matched_token_pos]
+        token.m = regexp.match(tokenmatch.string)
         token.__recognize__ if token.respond_to?("__recognize__") 
       else # It's a string literal
-        token = String.new(matched_token)
+        token = tokenmatch.string
       end
       token.start_pos = tokenmatch.start_pos
       token.end_pos = token.start_pos + tokenmatch.length
@@ -276,14 +278,14 @@ module Kanocc
   end
   
   class TokenMatch
-    attr_reader :tokens, :string, :start_pos, :length
+    attr_reader :regexps, :classes, :string, :start_pos, :length
     
-    def initialize(tokens, string, start_pos, length)
-      @tokens, @string, @start_pos, @length = tokens, string, start_pos, length
+    def initialize(regexps, classes, string, start_pos, length)
+      @regexps, @classes, @string, @start_pos, @length = regexps, classes, string, start_pos, length
     end
     
     def inspect
-      "#{tokens.inspect}, #{string.inspect}, #{start_pos}, #{length}"
+      "#{regexps.inspect}, #{classes.inspect}, #{string.inspect}, #{start_pos}, #{length}"
     end
   end
   

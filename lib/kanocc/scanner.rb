@@ -49,12 +49,10 @@ module Kanocc
       @regexps = []
       rec.each do |r| 
         @recognizables << r
-        c = Class.new
-        c.ancestors
         if r.class == Class and r.ancestors.include?(Token)
 	  @regexps << r.pattern
         elsif r.is_a? String
-          @regexps << Regexp.compile(Regexp.escape(r))
+          @regexps << Regexp.new(Regexp.escape(r))
         else
           raise "set_recognized must be given a list of Tokens classes and or strings"
         end
@@ -99,7 +97,7 @@ module Kanocc
         # We return the first character of the remaining input as a string
         # literal
         string = @stringScanner.string.slice(@stringScanner.pos, @stringScanner.pos + 1)
-        return TokenMatch.new([string], string, @stringScanner.pos, 1)
+        return TokenMatch.new([Regexp.new(Regexp.escape(string))], [String], string, @stringScanner.pos, 1)
       else
         return token_match
       end
@@ -114,18 +112,20 @@ module Kanocc
            if len > max_length
              # Now, we have a match longer than whatever we had, 
              # so we discharge what we had, and save the new one
-             matches = [@recognizables[i]]
+             matches = [i]
              max_length = len
            elsif len == max_length
              # This regular expression matches a string of same length 
              # as our previous match, so we prepare to return both
-             matches << @recognizables[i]
+             matches << i
            end
          end
       end
+      regexps = matches.map {|i| @regexps[i]}
+      classes = matches.map {|i| @recognizables[i]}
       start_pos = @stringScanner.pos
       string = @stringScanner.string.slice(start_pos, max_length)
-      return TokenMatch.new(matches, string, start_pos, max_length)
+      return TokenMatch.new(regexps, classes, string, start_pos, max_length)
     end
     
     def match_whitespace
