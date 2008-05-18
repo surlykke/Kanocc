@@ -25,10 +25,6 @@ require 'kanocc/scanner'
 require 'kanocc/earley'
 require 'logger'
 
-class String
-  attr_accessor :start_pos, :end_pos
-end
-
 # = Kanocc - Kanocc ain't no compiler-compiler
 #
 # Kanocc is a ruby-framework for parsing and translating.
@@ -165,31 +161,31 @@ module Kanocc
       @logger.info "Reducing by " + rule.inspect
       raise "Fatal: stack too short!" if @stack.length < rule.rhs.length
       nonterminal = rule.lhs.new      
-      nonterminal.start_pos, nonterminal.end_pos = calculate_start_and_end_pos(rule)
-      evaluate_semantics_and_pop(rule, nonterminal)
-      @stack.push(nonterminal)
+      stack_part = @stack.slice!(-rule.rhs.length, rule.rhs.length)   
+      if rule.rhs.length > 0
+        start_pos, end_pos = stack_part[0][1], stack_part[-1][2]
+      elsif @stack.length > 0
+        start_pos, end_pos =  @stack[-1][2], @stack[-1][2]
+      else
+        start_pos, end_pos = 0,0
+      end 
+      if rule.method
+	rhs = Rhs.new(stack_part.map{|a| a[0]}, start_pos, end_pos)
+        old_rhs = nonterminal.instance_variable_get('@rhs')
+        nonterminal.instance_variable_set('@rhs', rhs)
+        nonterminal.send(rule.method)
+        nonterminal.instance_variable_set('@rhs', old_rhs)
+      end
+      nonterminal_with_pos = [nonterminal, start_pos, end_pos] 
+      @stack.push(nonterminal_with_pos)
       show_stack
     end
     
     def calculate_start_and_end_pos(rule)
-      if rule.rhs.length > 0
-        return @stack[-rule.rhs.length].start_pos, @stack[-1].end_pos
-      elsif @stack.length > 0
-        return @stack[-1].end_pos, @stack[-1].end_pos
-      else
-        return 0,0
-      end  
-    end
+          end
 
     def evaluate_semantics_and_pop(rule, nonterminal)
-      right_hand_side = @stack.slice!(-rule.rhs.length, rule.rhs.length)
-      if rule.method
-        old_rhs = nonterminal.instance_variable_get('@rhs')
-        nonterminal.instance_variable_set('@rhs', right_hand_side)
-        nonterminal.send(rule.method)
-        nonterminal.instance_variable_set('@rhs', old_rhs)
-      end
-    end    
+   end    
    
     # The parser must call this method when it consumes a token
     # As argument it should give the consumed token and the positions 
@@ -198,19 +194,23 @@ module Kanocc
     # first character after the token.
     def report_token(tokenmatch, element)
       @logger.info("Pushing token: " + element.inspect)
-      matched_token_pos = (0..tokenmatch.regexps.length).find {|i| tokenmatch.classes[i] == element}
-      matched_token = tokenmatch.classes[matched_token_pos]
-      if matched_token.is_a? Class # It's a Token 
-        token = matched_token.new
-        regexp = tokenmatch.regexps[matched_token_pos]
-        token.m = regexp.match(tokenmatch.string)
-        token.__recognize__ if token.respond_to?("__recognize__") 
+      match = tokenmatch[:matches].find do |m| 
+	m[:token] == element || m[:literal] == element
+      end 
+       
+      if match[:token]  
+        token = match[:token].new
+        token.m = match[:regexp].match(tokenmatch[:string])
+        token.send(match[:method_name]) if match[:method_name] 
       else # It's a string literal
-        token = tokenmatch.string
+        token = match[:literal]
       end
-      token.start_pos = tokenmatch.start_pos
-      token.end_pos = token.start_pos + tokenmatch.length
-      @stack.push(token)
+      
+      start_pos = tokenmatch[:start_pos]
+      end_pos = start_pos + tokenmatch[:length]
+      token_with_pos = [token, start_pos, end_pos]
+      
+      @stack.push(token_with_pos)
       show_stack 
     end
         
@@ -258,7 +258,7 @@ module Kanocc
         
     # For debugging
     def show_stack
-      @logger.info("Stack: [" + @stack.map {|gs| show_grammar_symbol(gs)}.join(", ") + "]" ) if @logger
+      @logger.info("Stack: #{@stack.inspect}") if @logger
     end
     
     def show_grammar_symbols(tokens)
@@ -276,28 +276,16 @@ module Kanocc
     end
   
   end
-  
-  class TokenMatch
-    attr_reader :regexps, :classes, :string, :start_pos, :length
     
-    def initialize(regexps, classes, string, start_pos, length)
-      @regexps, @classes, @string, @start_pos, @length = regexps, classes, string, start_pos, length
+  class Rhs < Array
+    attr_accessor :start_pos, :end_pos
+    def initialize(arr, start_pos, end_pos)
+      @start_pos, @end_pos = start_pos, end_pos
+      super(arr)
     end
-    
+
     def inspect
-      "#{regexps.inspect}, #{classes.inspect}, #{string.inspect}, #{start_pos}, #{length}"
-    end
-  end
-  
-  class WhitespaceMatch
-    attr_reader :string, :start_pos, :length
-    
-    def initialize(string, start_pos, length)
-      @string, @start_pos, @length = string, start_pos, length
-    end
-    
-    def inspect 
-      "'#{string}', #{start_pos}, #{length}"
+      return "#{super.inspect}, #{start_pos.inspect}, #{end_pos.inspect}"
     end
   end
 
@@ -310,9 +298,6 @@ module Kanocc
   
   class KanoccException < Exception
   end
-
-  
-
 end
 
 

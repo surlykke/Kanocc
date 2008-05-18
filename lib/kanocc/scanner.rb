@@ -46,13 +46,12 @@ module Kanocc
     
     def set_recognized(*rec)
       @recognizables = []
-      @regexps = []
       rec.each do |r| 
-        @recognizables << r
         if r.class == Class and r.ancestors.include?(Token)
-	  @regexps << r.pattern
+	  @recognizables = @recognizables + r.patterns
         elsif r.is_a? String
-          @regexps << Regexp.new(Regexp.escape(r))
+          @recognizables << {:literal => r,
+	                     :regexp  => Regexp.new(Regexp.escape(r))}
         else
           raise "set_recognized must be given a list of Tokens classes and or strings"
         end
@@ -67,14 +66,13 @@ module Kanocc
       else
         raise "Input must be a string or an IO object"
       end 
-
       @stringScanner = StringScanner.new(@input)
       while match = do_match do
-        if match.is_a? TokenMatch
+        if match[:matches] 
           @logger.debug("Yielding #{match}")
           yield(match)
         end
-        @stringScanner.pos += match.length
+        @stringScanner.pos += match[:length]
       end
     end
 
@@ -88,44 +86,47 @@ module Kanocc
       token_match = match_token
       whitespace_match = match_whitespace
       
-      if whitespace_match.length > token_match.length
+      if whitespace_match[:length] > token_match[:length]
         return whitespace_match
-      end
-
-      if token_match.length == 0
-        # So we've not been able to match tokens nor whitespace.
+      elsif token_match[:length] > 0
+        return token_match
+      else 
+	# So we've not been able to match tokens nor whitespace.
         # We return the first character of the remaining input as a string
         # literal
-        string = @stringScanner.string.slice(@stringScanner.pos, @stringScanner.pos + 1)
-        return TokenMatch.new([Regexp.new(Regexp.escape(string))], [String], string, @stringScanner.pos, 1)
-      else
-        return token_match
+        string = @stringScanner.string.slice(@stringScanner.pos, 1)
+        matches = [{:literal => string, 
+	            :regexp  => Regexp.new(Regexp.escape(string))}] 
+	return {:matches => matches,
+	        :string => string,
+	        :start_pos => @stringScanner.pos,
+		:length => 1}
       end
     end
 
     def match_token
       matches = []
       max_length = 0 
-      for i in 0..@regexps.size-1 do
-         len = @stringScanner.match?(@regexps[i]) || 0
-         if len > 0
-           if len > max_length
-             # Now, we have a match longer than whatever we had, 
-             # so we discharge what we had, and save the new one
-             matches = [i]
-             max_length = len
-           elsif len == max_length
-             # This regular expression matches a string of same length 
-             # as our previous match, so we prepare to return both
-             matches << i
-           end
-         end
+      @recognizables.each do |rec| 
+	if (len = @stringScanner.match?(rec[:regexp])) and len > 0 
+	  if len > max_length
+            # Now, we have a match longer than whatever we had, 
+            # so we discharge what we had, and save the new one
+            matches = [rec]
+            max_length = len
+          elsif len == max_length
+            # This regular expression matches a string of same length 
+            # as our previous match, so we prepare to return both
+            matches << rec 
+          end
+        end
       end
-      regexps = matches.map {|i| @regexps[i]}
-      classes = matches.map {|i| @recognizables[i]}
       start_pos = @stringScanner.pos
       string = @stringScanner.string.slice(start_pos, max_length)
-      return TokenMatch.new(regexps, classes, string, start_pos, max_length)
+      return {:matches => matches, 
+	      :string  => string, 
+	      :start_pos => start_pos, 
+	      :length => max_length}
     end
     
     def match_whitespace
@@ -137,7 +138,10 @@ module Kanocc
         end
       end
       string = @stringScanner.string.slice(@stringScanner.pos, max_length)        
-      return WhitespaceMatch.new(string, @stringScanner.pos, max_length)
+      result = {:string => string, 
+	        :start_pos => @stringScanner.pos, 
+	        :length => max_length}
+      return result
     end
   end
   
@@ -157,3 +161,5 @@ end
 #scanner.set_whitespace(/[ \t]/)
 #
 #scanner.eachTokenDo{|token|  print token.inspect, "\n"}
+
+

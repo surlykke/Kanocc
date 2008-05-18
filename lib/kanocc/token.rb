@@ -17,7 +17,7 @@
 #
 module Kanocc
   class Token
-    attr_accessor :m, :start_pos, :end_pos
+    attr_accessor :m
     
     @@patterns = Hash.new
   
@@ -25,15 +25,22 @@ module Kanocc
       self.class == klass
     end
     
-    def Token.set_pattern(reg, &block)
-      @@patterns[self] = reg
+    def Token.pattern(reg, &block)
+      raise "pattern must be given a Regexp as it's first argument" unless reg.is_a?(Regexp)
+      @@patterns[self] = [] unless @@patterns[self]
       if block_given?
-        define_method(:__recognize__, &block)
+        method_name = ("pattern " + reg.inspect).to_sym
+        define_method(method_name, &block)
+      else
+	method_name = nil
       end
+      @@patterns[self] << {:token => self, 
+	                   :regexp => reg, 
+			   :method_name=>method_name}
     end
   
-    def Token.pattern
-      return @@patterns[self]
+    def Token.patterns
+      return @@patterns[self] || []
     end
 
     def is_a_kanocc_token?
@@ -45,7 +52,7 @@ module Kanocc
     end
 
     def inspect
-      self.class.name + "[" + @str + "]" 
+      self.class.name 
     end
   end
 end

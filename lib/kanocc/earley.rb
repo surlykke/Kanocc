@@ -67,8 +67,14 @@ module Kanocc
 
    
     def scan(token_match) 
-      token_match.classes.each do |token| 
-        @itemLists[@inputPos].add_all(@itemLists[@inputPos - 1].find_matching(token).map{|item| item.move})
+      token_match[:matches].each do |match| 
+        if match[:token] 
+	  symbol = match[:token]
+        else
+          symbol = match[:literal]
+        end
+	items = @itemLists[@inputPos - 1].find_matching(symbol)
+	@itemLists[@inputPos].add_all(items.map{|item| item.move})
       end
     end
     

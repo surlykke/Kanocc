@@ -46,7 +46,8 @@ require "logger"
 # ==========  Define a lexical grammar =============
 class Number < Kanocc::Token
   attr_reader :val
-  set_pattern(/\d+/) {@val = eval @m[0]}
+  pattern(/\d+/) {@val = @m[0].to_i}
+  pattern(/0x[0-9A-F]+/) {@val = @m[0].hex}
 end
 
 # ==========  Define a grammar =====================
@@ -66,7 +67,8 @@ end
 class Line < Kanocc::Nonterminal
   rule(Expr, "\n")   { p @rhs[0].val}
   rule(Kanocc::Error, "\n") do 
-    puts "Sorry - didn't understand: #{$source[start_pos, end_pos - start_pos].inspect}"
+    error_string = $source[@rhs.start_pos, @rhs.end_pos - @rhs.start_pos] 
+    puts "Sorry - didn't understand: #{error_string.inspect}"
   end
 end
 
@@ -87,8 +89,10 @@ $source = <<-EOF
   7 - 2 - 1
   3 * 2 + 4
   4 + 3 * 3
+  0xFF + 7
 EOF
 puts "parsing: \n" + $source
 
 # and go
 parser.parse($source)
+

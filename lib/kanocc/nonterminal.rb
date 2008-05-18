@@ -18,7 +18,6 @@
 require 'kanocc/grammar_rule'
 module Kanocc
   class Nonterminal
-    attr_accessor :start_pos, :end_pos
     @@rules = Hash.new
     @@last_rule = Hash.new
     @@derives_right = Hash.new
@@ -144,6 +143,10 @@ module Kanocc
     
     def Nonterminal.show_method_names
       @@method_names[self].each{|mn| puts mn.inspect} if @@method_names[self]
+    end
+
+    def inspect
+      self.class.name  
     end
   end
   
