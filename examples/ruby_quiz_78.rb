@@ -53,7 +53,7 @@ end
 
 class PackageList 
   attr_reader :val
-  rule(om(Package)){ @val = @rhs[0].map{|p| p.val}.join("") }
+  rule(om(Package)){ @val = @rhs[0].elements.map{|p| p.val}.join("") }
 end
 
 # Set up a parser 

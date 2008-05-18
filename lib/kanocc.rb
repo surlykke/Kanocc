@@ -126,7 +126,7 @@ module Kanocc
         @parser.consume(token_match)
       end
       @parser.eof
-      @stack[0]
+      @stack[0][0]
     end
    
     def parse_file(file)
