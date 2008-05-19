@@ -88,6 +88,9 @@
       </ulink>
       contains much useful information.
     </para>
+    <para>
+      It is also assumed that you have working knowledge of Ruby
+    </para>
   </chapter>
   <chapter>
     <title>
@@ -170,9 +173,9 @@
           
           class Num < Kanocc::Token 
             attr_reader :val 
-            setPattern(/\d+/) { @val = @m[0].to_i} 
+            pattern(/\d+/) { @val = @m[0].to_i} 
           end
-          
+        
           # ==================================================
           # Define a grammar based on the nonterminals 'Expr', 
           # 'Line' and 'Program' 
@@ -189,7 +192,8 @@
           
           class Line < Kanocc::Nonterminal 
             rule(Expr, "\n") {puts @rhs[0].val.to_s} 
-            rule(Kanocc::Error, "\n") {puts "Sorry - didn't understand #{@program.slice[@start, @end - @start]}"}
+	    rule(Kanocc::Error, "\n") do
+	      puts "Sorry - didn't understand #{@program.slice[@rhs.start_pos, @rhs.end_pos - @rhs.start_pos]}"}
           end
           
           class Program < Kanocc::Nonterminal 
@@ -230,8 +234,8 @@
 	extending <literal>Kanocc::Token</literal>.
       </para>
       <para>
-	By calling <literal>Kanocc::Token#setPattern</literal> we tell Kanocc how Numbers look. 
-	<literal>setPattern</literal> must be given a regular expression as argument.
+	By calling <literal>Kanocc::Token#pattern</literal> we tell Kanocc how Numbers look. 
+	<literal>pattern</literal> must be given a regular expression as argument.
       </para>
       <para>
 	By referring <literal>Number</literal> in our rules, we make Kanocc look for <literal>Number</literal> during lexical scanning. 
@@ -249,7 +253,7 @@
       <sect2>
 	<title>Semantics</title>
 	<para>
-	  You'll have noticed that the method <literal>Kanocc::Token.setPattern</literal> takes a block
+	  You'll have noticed that the method <literal>Kanocc::Token.pattern</literal> takes a block
 	  it's final argument. This allows you to initialize the token instances that Kanocc creates.
 	</para>
 	<para>
@@ -272,13 +276,33 @@
 	    </listitem>
 	    <listitem>
 	      <para>
-		Execute the block given to <literal>setPattern</literal> in the context of the newly 
+		Execute the block given to <literal>pattern</literal> in the context of the newly 
 		created instance.
 	      </para>
 	    </listitem>
 	  </itemizedlist>
 	  Note how, in our example, this allows us to set the instance variable <literal>@val</literal>
 	  in those instances of <literal>Number</literal> that Kanocc creates during parsing.
+	</para>
+      </sect2>
+      <sect2 >
+	<title>More than one pattern</title>
+	<para>
+	  It is possible to call <literal>pattern</literal> more than once in a Token class. As an example let's 
+	  say we want to allow input of numbers in both decimal and hexadecimal form. We could then change the 
+	  definition of the class <literal>Num</literal> to:
+	  <programlisting>
+        class Num < Kanocc::Token 
+          attr_reader :val 
+          pattern(/0x[0-9A-F]+/) { @val = @m[0].hex }
+          pattern(/\d+/) { @val = @m[0].to_i} 
+        end
+	  </programlisting>
+	  With this change, the calculator in our example above will be able to accept expressions like:
+	  <programlisting>
+       0xFF + 7
+       exit
+	  </programlisting>
 	</para>
       </sect2>
       <sect2>
@@ -351,7 +375,7 @@
     <sect2> 
     <title>Semantics</title>
     <para>
-      Like <literal>Kanocc::Token.setPattern</literal>, <literal>Kanocc::Nonterminal.rule</literal>
+      Like <literal>Kanocc::Token.pattern</literal>, <literal>Kanocc::Nonterminal.rule</literal>
       accepts a block as it's final argument. This allows you to attach semantics to grammarrules. 
     </para>
     <para>
