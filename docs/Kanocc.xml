@@ -9,6 +9,7 @@
     <subtitle>Kanocc ain't no compiler-compiler</subtitle>
     <authorgroup>
       <author>
+
         <firstname>
           Christian 
         </firstname>
@@ -17,6 +18,7 @@
         </surname>
       </author>
     </authorgroup>
+    
     <copyright>
       <year>
         2008 
@@ -30,8 +32,7 @@
 	Permission is granted to copy, distribute and/or modify this document under the terms 
 	of the GNU Free Documentation License, Version 1.1 or any later version published by 
 	the Free Software Foundation; with no Invariant Sections, with no Front-Cover Texts, 
-	and with no Back-Cover Texts. A copy of the license is included in the appendix entitled 
-	"GNU Free Documentation License". 
+	and with no Back-Cover Texts. A copy of the license is included in the appendix entitled "GNU Free Documentation License". 
       </para>
     </legalnotice>
   </bookinfo>
@@ -54,6 +55,7 @@
     </itemizedlist>
   </chapter>
   <chapter>
+    
     <title>What is Kanocc?</title>
     <para>
       Kanocc is a Ruby-framework for parsing and translating for context-free grammars. 
@@ -74,8 +76,9 @@
   <chapter>
     <title>Reading this document</title>
     <para>
-      In the following we'll assume that you know what a parser, a grammar or a
-      syntax-directed translation is. If not, you'll have to do some reading. 
+      In the following it's assumed that you have knowledge of parsers, grammars 
+      and
+      syntax-directed translation. If not, you'll have to do some reading. 
       There is a lot of literature you can choose from. In particular I 
       recommend 
       <ulink url="http://books.google.com/books?id=U92GGgAACAAJ&amp;dq=compilers+principles+techniques+and+tools">
@@ -93,11 +96,35 @@
     </para>
   </chapter>
   <chapter>
+      <title>Notation</title>
+      <para>
+	  In this document we will use the typographic conventions of the ruby pickaxe book:
+      </para>
+      <para>
+	  Grammars, program examples and output from ruby-programs will be shown in a type-writer font:
+	  <programlisting>
+	      class A
+	        def initialize
+		  puts "In A's initializer..."
+		end
+              end
+
+              A.new
+	  </programlisting>
+	  produces:
+	  <programlisting>
+	      In A's initializer...
+	  </programlisting>
+      </para>
+      <para>
+      </para>
+  </chapter>
+  <chapter>
     <title>
       Getting and installing Kanocc
     </title>
-    <para>
-      Kanocc is available as a gem from RubyForge. Do
+    <para>1
+      Kanocc is <literal>availablemmmmmmmmmiiiiiiiiiiii</literal> as a gem from RubyForge. Do
       <footnote>
 	<para>You may have to be superuser to do that</para>
       </footnote>:
@@ -119,111 +146,98 @@
       <para>
         Most texts on grammars, parsers and such use arithmetic expressions as example. 
         Obviously we don't want to be at odds with this tradition, so we'll do a simple interpreter,
-        that can understand text containing arithmetic expressions - on per line - and print out 
-        the values.
+        that can understand and evaluate arithmeticj expressions.
       </para>
       <para>
         The grammar looks like this:
         <programlisting>
-          Program ::= Line Program
-	            | "exit" "\n" 
- 		   
- 	  Line    ::= Expr "\n" 
-	  
-	  Expr    ::= Expr "+" Expr
-       	            | Expr "-" Expr
-       		    | Expr "*" Expr
-       		    | Expr "/" Expr
-       		    | "(" Expr ")"
-       		    | Int
-        </programlisting>
-	This grammar is made up of:
-	<itemizedlist>
-	  <listitem>
-	    <para>3 nonterminals: 
-	      <literal>Program</literal>, 
-	      <literal>Line</literal>, 
-	      <literal>Expr</literal>
-	    </para> 
-	  </listitem>
-	  <listitem>
-	    <para>9 tokens: 
-	      <literal>Int</literal> 
-	      which is suppose to match a sequence of digits, and 8 string literals: 
-	      <literal>"("</literal> ,
-	      <literal>")"</literal> ,
-	      <literal>"+"</literal> ,
-	      <literal>"-"</literal> ,
-	      <literal>"*"</literal> ,
-	      <literal>"/"</literal> ,
-	      <literal>"\n"</literal> ,
-	      <literal>"exit"</literal>
-	    </para>
-          </listitem>
-	</itemizedlist>
+          Expr    ::= Expr "+" Term 
+       	            | Expr "-" Term
+		    | Term
+       	  
+	  Term    ::= Term * Factor
+	            | Term / Factor
+		    | Factor
+          
+	  Factor  ::= Number
+	            | "(" Expr ")"
+       	</programlisting>
+	This grammar is made up of the nonterminals 
+	<literal>Expr</literal>,
+	<literal>Term</literal> and
+	<literal>Factor</literal>
+	and
+	9 tokens:
+	<literal>Number</literal> 
+	which is suppose to match a sequence of digits, and 8 string literals: 
+	<literal>"("</literal> ,
+	<literal>")"</literal> ,
+	<literal>"+"</literal> ,
+	<literal>"-"</literal> ,
+	<literal>"*"</literal> ,
+	<literal>"/"</literal> ,
+	<literal>"\n"</literal> ,
+	<literal>"exit"</literal>
       </para>
       <para>
-	With Kanocc, you can do an interpreter for the grammar above like this:
+	With Kanocc, you can do an interpreter for the above grammar like this:
         <programlisting>
 	  require "rubygems"   
 	  require "kanocc"
 
+
           # ==================================================
           # Define the token 'Number' and what it matches 
           
-          class Num < Kanocc::Token 
+          class Number &lt; Kanocc::Token 
             attr_reader :val 
             pattern(/\d+/) { @val = @m[0].to_i} 
           end
         
-          # ==================================================
-          # Define a grammar based on the nonterminals 'Expr', 
-          # 'Line' and 'Program' 
-          
-          class Expr < Kanocc::Nonterminal 
+           
+	  # ==================================================
+          # Define the nonterminals Expr, Term and Factor with
+	  # their rules
+         
+	  # First, a forward declarations
+	  class Expr &lt; Kanocc::Nonterminal 
+	  end   
+	  
+	  # Then - the real stuff.
+	  class Factor &lt; Kanocc::Nonterminal 
+	    attr_reader :val
+	    rule(Number) {@val = @rhs[0].val}
+            rule("(", Expr, ")") { @val = @rhs[1].val}
+	  end
+	
+	  class Term &lt; Kanocc::Nonterminal 
+	    attr_reader :val
+            rule(Term, "*", Factor) { @val = @rhs[0].val * @rhs[2].val}
+            rule(Term, "/", Factor) { @val = @rhs[0].val / @rhs[2].val} 
+	    rule(Factor) {@val = @rhs[0].val}
+          end
+
+	  class Expr 
             attr_reader :val 
           
-            rule(Expr, "+", Expr) { @val = @rhs[0].val + @rhs[2].val}
-            rule(Expr, "-", Expr) { @val = @rhs[0].val - @rhs[2].val}
-            rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; prec 2
-            rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val}; prec 2 
-            rule("(", Expr, ")") { @val = @rhs[1].val} rule(Num) { @val = @rhs[0].val} 
+            rule(Expr, "+", Term) { @val = @rhs[0].val + @rhs[2].val}
+            rule(Expr, "-", Term) { @val = @rhs[0].val - @rhs[2].val}
+            rule(Term) { @val = @rhs[0].val} 
           end
           
-          class Line < Kanocc::Nonterminal 
-            rule(Expr, "\n") {puts @rhs[0].val.to_s} 
-	    rule(Kanocc::Error, "\n") do
-	      puts "Sorry - didn't understand #{@program.slice[@rhs.start_pos, @rhs.end_pos - @rhs.start_pos]}"}
-          end
-          
-          class Program < Kanocc::Nonterminal 
-            rule(Line, Program) 
-            rule("exit", "\n") {puts "Goodbye!"} 
-          end
-          
-          # ========== Set up a parser ====================== 
-          myParser = Kanocc::Kanocc.new 
+	  # ========== Set up a parser for Expr ============= 
+          myParser = Kanocc::Kanocc.new(Expr) 
  
-	  myParser.startSymbol = Program 
-	  
 	  # ========== And try it out ======================= 
-          program = <<-EOT 
-            3 + 4 - 2 
-            8 - 2 * 3 
-            8 * + 3 
-            exit 
-          EOT
-          
-          myParser << program
-        </programlisting>
+          puts myParser.parse('3 + 4 - 2').val 
+          puts myParser.parse('8 - 2 * 3').val 
+	</programlisting>
       </para>
       <para>
         If you run this script, you'll get:
 	<screen>
           5 
           2 
-          Sorry, didn't understand 8 * + 3 
-          Goodbye!
 	</screen>
         In the following we will go through the elements of this example
       </para>
@@ -238,7 +252,8 @@
 	<literal>pattern</literal> must be given a regular expression as argument.
       </para>
       <para>
-	By referring <literal>Number</literal> in our rules, we make Kanocc look for <literal>Number</literal> during lexical scanning. 
+	By referring <literal>Number</literal> in our rules, we make Kanocc look for <literal>Number</literal>
+	during lexical scanning. 
       </para>
       <para>
 	Obviously, string literal tokens 
@@ -269,7 +284,7 @@
 	    </listitem>
 	    <listitem>
 	      <para>
-		Create a <literal>match</literal> object by applying the regular expression you gave to 
+		Create a <literal>match</literal> object by applying the regular expression you gave, to 
 		the portion of input being matched, and inject it into the newly created instance 
 		(of <literal>Number</literal>) as <literal>@m</literal>
 	      </para>
@@ -294,15 +309,18 @@
 	  <programlisting>
         class Num < Kanocc::Token 
           attr_reader :val 
-          pattern(/0x[0-9A-F]+/) { @val = @m[0].hex }
-          pattern(/\d+/) { @val = @m[0].to_i} 
+          pattern(/0x[0-9A-F]+/) { @val = @m[0].hex } # Hex notation
+          pattern(/\d+/) { @val = @m[0].to_i}  # Decimal notation 
         end
 	  </programlisting>
 	  With this change, the calculator in our example above will be able to accept expressions like:
 	  <programlisting>
-       0xFF + 7
-       exit
+           0xA3 + 7
 	  </programlisting>
+	  which would yield:
+	  <screen>
+	    173
+	  </screen>
 	</para>
       </sect2>
       <sect2>
@@ -322,14 +340,18 @@
       whitespace. 
     </para>
     <para>
-      You may redefine this, if you wish, by calling the method <literal>Kanocc::Kanocc.setWhitespace </literal>. 
+      You may redefine this, if you wish, by calling the method <literal>Kanocc::Kanocc.setWhitespace</literal>.
+      <literal>setWhitespace</literal> takes a list of regular expressions as argument.
     </para>
     <para>
       For example, to define that spaces, tabs and anything from a '<literal>#</literal>' to lineending 
       is whitespace, you can do:
       <programlisting>
-	myParser = Kanocc::Kanocc.new
 	myParser.setWhitespace(/ /, /\t/, /#.*/)
+      </programlisting>
+      - or, if you prefer:
+      <programlisting>
+	myParser.setWhitespace(/ |\t|#.*)
       </programlisting>
       You have all the power of Ruby regular expressions at your disposal here.
     </para>
@@ -345,27 +367,28 @@
     <sect1>
     <title>Nonterminals</title>
     <para>
-      In our example we defined 3 classes: <literal>Expr</literal>, <literal>Line</literal> and <literal>Program</literal>, 
+      In our example we defined 3 classes: <literal>Expr</literal>, <literal>Term</literal> and <literal>Factor</literal>, 
       each of them extending <literal>Kanocc::Nonterminal</literal>. 
       This is how we tell Kanocc about the nonterminals of our grammar.
     </para>
     <para>
       Inside each class definition we make calls to the static method <literal>rule</literal>.
       With this we define the grammarrules belonging to that that particular nonterminal. 
-      For examle, the definition of the class <literal>Expr</literal> tells Kanocc about the rules:
-      <programlisting><![CDATA[ 
-	Expr ::= Expr "+" Expr
-               | Expr "-" Expr
-               | Expr "*" Expr 
-               | Expr "/" Expr 
-               | "(" Expr ")" 
-	       | Number
-      ]]>	       
+      For examle, we told Kanocc about the rule:
+      <programlisting>	
+         Expr ::= Expr "+" Term
+      </programlisting>
+      with the call
+      <programlisting>
+	  rule(Expr, "+", Term) {@val = @rhs[0].val + @rhs[2].val}
       </programlisting>
       The arguments to calls to <literal>rule</literal> must be nonterminals 
       (that means: classes that inherit from <literal>Kanocc::Nonterminal</literal>), 
-      tokens (classes that inherit from <literal>Kanoc::Token</literal>) or strings, e.g: 
-      <literal>Expr</literal>, <literal>Number</literal>, <literal>"exit"</literal>.
+      tokens (classes that inherit from <literal>Kanoc::Token</literal>) or strings. 
+    </para>
+    <para>
+	The parameterlist may be followed by a block, defining the semantic actions to take when 
+	the reduction is performed.
     </para>
     <para>
       Nonterminals must always have parameterless <literal>initialize</literal> method so Kanocc 
@@ -375,18 +398,24 @@
     <sect2> 
     <title>Semantics</title>
     <para>
-      Like <literal>Kanocc::Token.pattern</literal>, <literal>Kanocc::Nonterminal.rule</literal>
-      accepts a block as it's final argument. This allows you to attach semantics to grammarrules. 
+      <literal>Nonterminal#rule</literal>
+      accepts a block as it's final argument. This allows you to attach semantics to grammarrules.
     </para>
     <para>
-      Here's how it works.
-      When Kanocc decides to do a reduction by a grammarrule, say:
+      Whenever Kanocc reduces by a grammarrule, it creates an instance of the class (Nonterminal)
+      that has the rule. 
+    </para>
+    <para>
+      For example, when reducing by the rule
       <programlisting>
-        Expr ::= Expr "+" Expr
+        Expr ::= Expr "+" Term
       </programlisting>
-      it will already have created two instances of the class <literal>Expr</literal>, one for each occurrence of 
-      <literal>Expr</literal> on the righthand side. Lets call these instances <literal>e1</literal> and 
-      <literal>e2</literal>, respectively.
+      Kanocc will create an instance of the class Expr. This happens bottom-up, so
+      at this point Kanocc 
+      will already have an instances of the nonterminals on the right-hand side 
+      of the rule (<literal>Expr</literal> and
+      <literal>Term</literal>). Lets call these instances <literal>expr</literal> and 
+      <literal>term</literal>, respectively.
     </para>
     <para>
       When Kanocc does the reduction it:
@@ -398,12 +427,12 @@
 	</listitem>
 	<listitem>
 	  <para>
-	    Injects the array <literal>[e1, "+", e2]</literal> into this instance as <literal>@rhs</literal>
+	    Injects the array <literal>[expr, "+", term]</literal> into this instance as <literal>@rhs</literal>
 	  </para>
 	</listitem>
 	<listitem>
 	  <para>
-	    Excecutes the given block in the context of this newly created instance
+	    Excecutes the given block in the context of this new instance.
 	  </para>
 	</listitem>
       </orderedlist>
@@ -413,39 +442,70 @@
   <sect2>
     <title>Precedence</title>
     <para>
-      Kanocc supports 2 forms of precedence: 
-      
-      <itemizedlist>
-        <listitem>
-	  <para>rule-precedence </para>
-	</listitem>
-	<listitem>
-	  <para>operator-precedence</para>
-	</listitem>
-      </itemizedlist>
+	In our example above, we used an <emphasis>unambigous</emphasis> grammar. 
+        We might, however, prefer the following ambigous grammar:
+    </para>
+    <programlisting>
+      Expr ::= Expr '+' Expr
+             | Expr - Expr
+	     | Expr * Expr
+	     | Expr / Expr
+	     | '(' Expr ')'
+	     | Number
+    </programlisting>
+    <para>This grammar is ambigous as it doesn't specify whether to interpret
+    expression
+    <literal>
+       8 - 2 * 3
+    </literal>    
+    as
+    <literal>
+       (8 - 2) * 3 
+    </literal>
+    or
+    <literal>
+       8 - (2 * 3)
+    </literal>.
+    The remedy for this is <emphasis>precedence</emphasis> which we will look 
+    at now.
     </para>
     <sect3>
       <title>Rule-precedence</title>
       <para>
 	You assign precedence to a rule by following the call to rule by a call to 
 	<programlisting>
-	  Nonterminal.prec
+	  Nonterminal#prec
 	</programlisting> 
 	with an integer as argument. Default precedence is 0, so if you give a 
 	precedence > 0 you increase precedence - i.e make Kanocc more inclined to use the production.
       </para>
       <para>
-	In our example, we defined the class <literal>Expr</literal> as:
+        Using rule precedence, we can rewrite our example to:	
 	<programlisting>
+	  require "rubygems"   
+	  require "kanocc"
+
+          class Number < Kanocc::Token 
+            attr_reader :val 
+            pattern(/\d+/) { @val = @m[0].to_i} 
+          end
+        
+           
 	  class Expr < Kanocc::Nonterminal 
             attr_reader :val 
           
             rule(Expr, "+", Expr) { @val = @rhs[0].val + @rhs[2].val}
             rule(Expr, "-", Expr) { @val = @rhs[0].val - @rhs[2].val}
-            rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; prec 2
-            rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val}; prec 2 
-            rule("(", Expr, ")") { @val = @rhs[1].val} rule(Num) { @val = @rhs[0].val} 
-          end.
+            rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; prec 1
+            rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val}; prec 1 
+	    rule("(", Expr, ")") { @val = @rhs[1].val}
+	    rule(Number) {@val = @rhs[0].val}
+          end
+  
+          myParser = Kanocc::Kanocc.new(Expr) 
+ 
+          puts myParser.parse('3 + 4 - 2').val 
+          puts myParser.parse('8 - 2 * 3').val 
 	</programlisting>
 	The two calls to <literal>prec</literal> gave the rules for multiplication and division higher precedence.
       </para>
@@ -457,7 +517,7 @@
 	<programlisting>
 	  Kanocc::Nonterminal.oPrec
 	</programlisting>
-	, to assign precedence to an operator in your grammar. For example: 
+	to assign precedence to an operator in your grammar. For example: 
 	<programlisting>
 	  oPrec('*', 2).
 	</programlisting>
@@ -472,14 +532,15 @@
             rule(Expr, "-", Expr) { @val = @rhs[0].val - @rhs[2].val}
             rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; 
             rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val};  
-            rule("(", Expr, ")") { @val = @rhs[1].val} rule(Num) { @val = @rhs[0].val} 
+	    rule("(", Expr, ")") { @val = @rhs[1].val} 
+	    rule(Num) { @val = @rhs[0].val} 
 	    oPrec('*', '/', 2)
 	  end.
 	</programlisting>
-	When you define operator precedence, Kanocc will apply it to those rules that have the operator as it's
+	When you define operator precedence like this, Kanocc will apply it to those rules that have the operator as it's
 	first terminal on the righthand-side. <footnote><para>I think this is how Yacc/Bison works.</para></footnote>
       </para>
-      <para>
+      <para> 
 	<literal>oPrec</literal> takes a variable number of arguments. If you give it 
 	<literal>N</literal> 
 	arguments, the first <literal>N-1</literal> of them must be terminals and the last must be a number.
@@ -503,7 +564,8 @@
             rule(Expr, "-", Expr) { @val = @rhs[0].val - @rhs[2].val}
             rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; 
             rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val};  
-            rule("(", Expr, ")") { @val = @rhs[1].val} rule(Num) { @val = @rhs[0].val} 
+	    rule("(", Expr, ")") { @val = @rhs[1].val} 
+	    rule(Num) { @val = @rhs[0].val} 
 	  end.
 	</programlisting>
 	- and then:
@@ -511,14 +573,15 @@
 	  myParser = Kanocc::Kanocc.new
 	  myParser.oPrec('*', '/', 2)
 	</programlisting>
-	This will have effect when Kanocc is considering any pair of rules. 
+	Operator precedence defined like this will have effect when Kanocc is 
+	considering any pair of rules. 
       </para>
       <para>
 	In some languages an operator may have different 
 	meanings in different contexts. Think, for example, about the operator '*' in C. 
-	It can mean multiplication and 
-	pointer-indirection. By making your operator-precedence assignments at the nonterminal level, 
-	you can make your grammar more readable.
+	It can mean multiplication and pointer-indirection. By making your 
+	operator-precedence assignments at the nonterminal level, you can make 
+	your grammar more readable.
       </para>
     </sect3>
   </sect2>
@@ -529,25 +592,99 @@
     <title>Setting up the parser</title>
     <para>
       Once you have your tokens and nonterminals in place, the rest is simple: 
-      Create an instance of <literal>Kanocc::Kanocc</literal>, tell it which nonterminal is the startsymbol, and feed 
-      it some input.
+      Construct an instance of <literal>Kanocc::Kanocc</literal> with the startsymbol
+      of your grammar as argument. 
+    </para>
+    <para>
+	Then call Kannoc#parse with the input as argument, and Kanocc will try
+	to reduce the input to the given startsymbol. If succesful, an instance 
+	of that startsymbol will be returned.
     </para>
     <para>
       In our example:
       <programlisting><![CDATA[
-	myParser = Kanocc::Kanocc.new
-	myParser.startSymbol = Program
-	.
-	.
-	myParser << program 
+	myParser = Kanocc::Kanocc.new(Expr)
+	puts myParser.parse('8 - 3 * 2').val
 	]]>
       </programlisting>
       did that.
     </para>
   </sect1>
+  </chapter>
 
+  <chapter>
+    <title>Lists</title>
+    <para>
+      Often, a language you define will contain lists of stuff. Kanocc comes with 
+      two metods for this particular purpose: <literal>zm</literal> ('zero or more') 
+      and <literal>om</literal> ('one or more'). 
+      Both methods take as their first argument the grammarsymbol that make up the list, 
+      and as an optional second parameter, a symbol that will be used as a separator.
+    </para>
+    <para>
+      Thus, <literal>zm(A)</literal>, means a (possibly empty) list of <literal>A</literal>'s, and 
+      <literal>zm(A, ";")</literal> means a 
+      (possibly empty) list of <literal>A</literal>'s separated by semicolons.
+    </para>
+    <para>
+      You may also feed <literal>zm</literal> and <literal>om</literal> arrays - 
+      <literal>zm([A, B, C], ",")</literal> would accept lists like:
+      <programlisting>
+        A B C, A B C, A B C, A B C
+      </programlisting>
+      Say we wanted to extend our parser above, so that it accepts several expressions, 
+      each on one line. We could rewrite the parser like this:
+      <programlisting>
+	  require "rubygems"   
+	  require "kanocc"
 
-  <sect1>
+          class Number < Kanocc::Token 
+            attr_reader :val 
+            pattern(/\d+/) { @val = @m[0].to_i} 
+          end
+        
+           
+	  class Expr < Kanocc::Nonterminal 
+            attr_reader :val 
+          
+            rule(Expr, "+", Expr) { @val = @rhs[0].val + @rhs[2].val}
+            rule(Expr, "-", Expr) { @val = @rhs[0].val - @rhs[2].val}
+            rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; prec 1
+            rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val}; prec 1 
+	    rule("(", Expr, ")") { @val = @rhs[1].val}
+	    rule(Number) {@val = @rhs[0].val}
+          end
+	  
+	  class Program < Kanocc::Nonterminal
+	    rule(zm(Expr, "\n")) { @rhs[0].each {|expr| puts expr.val}
+	  end
+  
+          Kanocc::Kanocc.new(Program).parse 
+      </programlisting>
+    </para>
+    <para>
+      As an other example, consider compund statements - a sequence of statements surrounded by 
+      <literal>"begin"</literal> and <literal>"end"</literal> 
+      and separated by semicolons. For example:
+      <programlisting><![CDATA[
+	begin
+	  <stmt>;
+	  <stmt>;
+          <stmt>
+	end
+]]></programlisting>
+    </para>
+    <para>
+      In Kanocc you can write a grammar for that like:
+      <programlisting>
+	class CompoundStatement < Kanocc::Nonterminal
+	  rule("begin", zm(Statement, ";"), "end")
+	end
+      </programlisting>
+    </para>
+  </chapter>
+
+  <chapter>
     <title>Error handling</title>
     <para>
       Kanocc has a special nonterminal <literal>Kanocc::Error</literal> which may be used on the 
@@ -608,58 +745,8 @@
 	  "  8 * + 3 "
 	</screen>
    </para>
-  </sect1>
-
-
-</chapter> 
-  <chapter>
-    <title>Lists</title>
-    <para>
-      Often, a language you define will contain lists of stuff. Kanocc comes with 
-      two metods for this particular purpose: <literal>zm</literal> ('zero or more') 
-      and <literal>om</literal> ('one or more'). 
-      Both methods take as their first argument the grammarsymbol that make up the list, 
-      and as an optional second parameter, a symbol that will be used as a separator.
-    </para>
-    <para>
-      Thus, <literal>zm(A)</literal>, means a (possibly empty) list of <literal>A</literal>'s, and 
-      <literal>zm(A, ";")</literal> means a 
-      (possibly empty) list of <literal>A</literal>'s separated by semicolons.
-    </para>
-    <para>
-      You may also feed <literal>zm</literal> and <literal>om</literal> arrays - 
-      <literal>zm([A, B, C], ",")</literal> would accept lists like:
-      <programlisting>
-        A B C, A B C, A B C, A B C
-      </programlisting>
-      In our calculator example we could have written the <literal>Program</literal> class using <literal>zm</literal>, as:
-      <programlisting>
-	class Program < Kanocc::Nonterminal
-	  rule(zm(Line), "exit", "\n")
-	end
-      </programlisting>
-    </para>
-    <para>
-      As an other example, consider compund statements - a sequence of statements surrounded by 
-      <literal>"begin"</literal> and <literal>"end"</literal> 
-      and separated by semicolons. For example:
-      <programlisting><![CDATA[
-	begin
-	  <stmt>;
-	  <stmt>;
-          <stmt>
-	end
-   ]]></programlisting>
-    </para>
-    <para>
-      In Kanocc you can write a grammar for that like:
-      <programlisting>
-	class CompoundStatement < Kanocc::Nonterminal
-	  rule("begin", zm(Statement, ";"), "end")
-	end
-      </programlisting>
-    </para>
   </chapter>
+
   <chapter>
     <title>Debugging and loggin</title>
     <para>

@@ -115,12 +115,19 @@ module Kanocc
     # - if parsing succeeds - return an instance of the grammars start symbol.
     # Input may be a String or an IO object.
     def parse(input)
+      if input.is_a?(IO) 
+        @input = input.readlines.join("")
+      elsif input.is_a?(String) 
+        @input = input
+      else
+        raise "Input must be a string or an IO object"
+      end 
       raise "Start symbol not defined" unless @start_symbol
       tell_parser_start_symbol(@start_symbol) 
       @parser.prepare 
       @stack = []
       @inputPos = 0 
-      @scanner.each_token(input) do |token_match|
+      @scanner.each_token(@input) do |token_match|
         @logger.info "got #{token_match.inspect} from scanner"
         @inputPos += 1
         @parser.consume(token_match)
@@ -160,8 +167,8 @@ module Kanocc
     def report_reduction(rule) 
       @logger.info "Reducing by " + rule.inspect
       raise "Fatal: stack too short!" if @stack.length < rule.rhs.length
-      nonterminal = rule.lhs.new      
-      stack_part = @stack.slice!(-rule.rhs.length, rule.rhs.length)   
+      nonterminal = rule.lhs.new
+      stack_part = @stack.slice!(-rule.rhs.length, rule.rhs.length)
       if rule.rhs.length > 0
         start_pos, end_pos = stack_part[0][1], stack_part[-1][2]
       elsif @stack.length > 0
@@ -170,7 +177,7 @@ module Kanocc
         start_pos, end_pos = 0,0
       end 
       if rule.method
-	rhs = Rhs.new(stack_part.map{|a| a[0]}, start_pos, end_pos)
+	rhs = Rhs.new(stack_part.map{|a| a[0]}, start_pos, end_pos, @input)
         old_rhs = nonterminal.instance_variable_get('@rhs')
         nonterminal.instance_variable_set('@rhs', rhs)
         nonterminal.send(rule.method)
@@ -182,10 +189,10 @@ module Kanocc
     end
     
     def calculate_start_and_end_pos(rule)
-          end
+    end
 
     def evaluate_semantics_and_pop(rule, nonterminal)
-   end    
+    end    
    
     # The parser must call this method when it consumes a token
     # As argument it should give the consumed token and the positions 
@@ -278,17 +285,21 @@ module Kanocc
   end
     
   class Rhs < Array
-    attr_accessor :start_pos, :end_pos
-    def initialize(arr, start_pos, end_pos)
-      @start_pos, @end_pos = start_pos, end_pos
+    attr_reader :start_pos, :end_pos
+    def initialize(arr, start_pos, end_pos, input)
+      @start_pos, @end_pos, @input = start_pos, end_pos, input
       super(arr)
     end
 
+    def text
+      @input.slice(start_pos, end_pos - start_pos)
+    end
+    
     def inspect
       return "#{super.inspect}, #{start_pos.inspect}, #{end_pos.inspect}"
     end
   end
-
+  
   class ParseException < Exception 
     attr_accessor :inputPos, :inputSymbol, :expected 
     def initialize(inputPos, inputSymbol, expected)

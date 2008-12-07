@@ -167,10 +167,9 @@ module Kanocc
   end
 
   class Error < Nonterminal
-    attr_reader :text
+    attr_accessor :text
     def initialize
       super
-      @text = "FIXME"
     end
   end
 end
