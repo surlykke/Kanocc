@@ -15,6 +15,8 @@
 #  You should have received a copy of the GNU General Public License,
 #  version 3 along with Kanocc.  If not, see <http://www.gnu.org/licenses/>.
 #
+require 'rubygems'
+require 'ruby-debug'
 module Kanocc
   class GrammarRule
     attr_reader :lhs, :rhs, :method, :operator_prec
@@ -24,22 +26,26 @@ module Kanocc
       @lhs = lhs
       @rhs = rhs
       @method = method
-      if (operator =rhs.find {|s| s.is_a?(String) or s.is_a?(Token)})
-        @operator_prec = Nonterminal.operator_precedence(operator) 
-      end
-      @prec = 0
       @logger.debug("#{lhs} --> #{rhs.map {|gs| gs.is_a?(Symbol) ? gs.to_s : gs}.join}, #prec = #{@prec}, method = #{method}") unless not @logger
     end
   
-    def operator_prec
-      unless @operator_prec_calculated
-          operator = rhs.find {|s| s.is_a?(String) or s.is_a?(Token)}  
+    def prec
+      if @prec
+        return @prec
+      else
+        unless @operator_prec_calculated
+	  operator = rhs.find {|s| s.is_a?(String) or s.is_a?(Token)}  
           if operator
             @operator_prec = lhs.operator_precedence(operator)
           end
           @operator_prec_calculated = true
+        end
+        if @operator_prec
+          return @operator_prec
+	else
+          return 0
+	end
       end
-      @operator_prec
     end
     
     def inspect 

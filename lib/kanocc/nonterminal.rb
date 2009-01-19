@@ -98,7 +98,11 @@ module Kanocc
     def Nonterminal.zm(symbols, sep = nil)
       list_class = new_list_class 
       list_class.rule() {@elements = []}
-      list_class.rule(om(symbols, sep)) {@elements = @rhs[0].elements}
+      if sep
+        list_class.rule(list_class, sep, *symbols) {@elements = @rhs[0].elements + @rhs[2..@rhs.length]}
+      else
+        list_class.rule(list_class, *symbols) {@elements = @rhs[0].elements + @rhs[1..@rhs.length]}
+      end
       return list_class
     end
     
@@ -148,6 +152,30 @@ module Kanocc
     def inspect
       self.class.name  
     end
+
+    def Nonterminal.show_rules
+      rules.each do |rule| 
+	puts rule.inspect
+      end
+    end
+    
+    def Nonterminal.show_all_rules
+       queue = [self]
+       done = {}
+       i = 0
+       while (i < queue.length)
+	 queue[i].show_rules
+	 done[queue[i]] = true
+         queue[i].rules.each do |rule|
+	   rule.rhs.each do |gs|
+	     if gs.respond_to?(:rules) and not done[gs]
+	       queue.push(gs)
+             end
+           end
+         end
+	 i += 1
+       end
+    end
   end
   
   
@@ -167,9 +195,8 @@ module Kanocc
   end
 
   class Error < Nonterminal
-    attr_accessor :text
-    def initialize
-      super
+    def str 
+      "hey"
     end
   end
 end

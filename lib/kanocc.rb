@@ -80,7 +80,7 @@ require 'logger'
 #
 module Kanocc
   class Kanocc
-    attr_accessor :scanner, :parser, :logger
+    attr_accessor :parser, :logger
     
     # Creates a new instance of Kannocc, with the given start symbol.
     # From the start_symbol, Kanocc will deduce the grammar and the 
@@ -91,26 +91,19 @@ module Kanocc
       @logger = Logger.new(STDOUT)
       @logger.datetime_format = "" 
       @logger.level = Logger::WARN 
-      @scanner = Scanner.new(:logger => @logger)
       @parser = EarleyParser.new(self, :logger => @logger)
     end
     
     def logger=(logger)
       @logger = logger || logger.new(STDOUT)
-      @parser.logger = @logger if parser.respond_to?(:logger)
-      @scanner.logger = @logger if scanner.respond_to?(:logger)
+      @parser.logger = @logger if parser.respond_to?(:logger=)
     end
   
     def parser=(parser)
       @parser = parser
       @parser.logger = @logger if parser.respond_to?(:logger=)
     end
-    
-    def scanner=(scanner)
-      @scanner = scanner
-      @scanner.logger = @logger if scanner.respond_to?(:logger=)
-    end
-    
+        
     # Consume input. Kanocc will parse input according to the rules given, and
     # - if parsing succeeds - return an instance of the grammars start symbol.
     # Input may be a String or an IO object.
@@ -123,16 +116,9 @@ module Kanocc
         raise "Input must be a string or an IO object"
       end 
       raise "Start symbol not defined" unless @start_symbol
-      tell_parser_start_symbol(@start_symbol) 
-      @parser.prepare 
+      @parser.start_symbol = @start_symbol 
       @stack = []
-      @inputPos = 0 
-      @scanner.each_token(@input) do |token_match|
-        @logger.info "got #{token_match.inspect} from scanner"
-        @inputPos += 1
-        @parser.consume(token_match)
-      end
-      @parser.eof
+      @parser.parse(@input) 
       @stack[0][0]
     end
    
@@ -151,7 +137,7 @@ module Kanocc
     # whitespace takes a variable number of arguments, each of which must be a 
     # regular expression.
     def set_whitespace(*ws)
-      @scanner.set_whitespace(*ws)
+      @parser.set_whitespace(*ws)
     end
     
     # Define which tokens Kanocc should recognize. If this method is not called
@@ -159,7 +145,7 @@ module Kanocc
     # tokens= takes a variable number of arguments. Each argument must either be
     # a string or a class which is a subclass of Kanocc::Token
     def set_tokens(*tokens)
-      @scanner.set_recognized(*tokens)
+      @parser.set_recognized(*tokens)
     end
     
     # The parser must call this method when it have decided upon a reduction.
@@ -188,12 +174,6 @@ module Kanocc
       show_stack
     end
     
-    def calculate_start_and_end_pos(rule)
-    end
-
-    def evaluate_semantics_and_pop(rule, nonterminal)
-    end    
-   
     # The parser must call this method when it consumes a token
     # As argument it should give the consumed token and the positions 
     # in the input string corresponding to the token. Positions should be given
@@ -220,49 +200,28 @@ module Kanocc
       @stack.push(token_with_pos)
       show_stack 
     end
-        
-    
-    def tell_parser_start_symbol(start_symbol)
-      @parser.startsymbol = start_symbol
-      bag_of_terminals = {}
-      find_tokens(start_symbol, bag_of_terminals)
-      @logger.debug "tokens = " + bag_of_terminals.keys.inspect 
-      strings = bag_of_terminals.keys.find_all{|ter| ter.is_a? String} 
-      @logger.info("Literals: " + strings.inspect)
-      tokens = bag_of_terminals.keys.find_all{|ter| ter.is_a? Class and ter.ancestors.member?(Token)}
-      @logger.info("Tokens: " + tokens.inspect)
-      @scanner.set_recognized(*(strings + tokens))
-
-      # Show rules
-      @logger.info("Rules:")
-      nonterminals = [start_symbol]
-      nonterminals.each do |nonterminal|
-        nonterminal.rules.each do |rule|
-          @logger.info("  " + rule.inspect)
-	  rule.rhs.each do |gs|
-	    if gs.is_a? Class and gs.ancestors.member?(Nonterminal) and not nonterminals.member?(gs)
-	      nonterminals.push(gs)
-	    end
-	  end
-	end
-      end
+       
+    def find_tokens(nonterminal)   
+      collected_tokens = {}
+      find_tokens_helper(nonterminal, collected_tokens)
+      collected_tokens.keys
     end
-    
-    def find_tokens(nonterminal, collectedTokens,  visited_nonterminals = {})
+    def find_tokens_helper(nonterminal, collected_tokens,  visited_nonterminals = {})
       unless visited_nonterminals[nonterminal]
         visited_nonterminals[nonterminal] = true
         nonterminal.rules.each do |r| 
           r.rhs.each do |gs|
             if gs.is_a?(Class) and gs.ancestors.member?(Nonterminal)
-              find_tokens(gs, collectedTokens, visited_nonterminals)
+              find_tokens_helper(gs, collected_tokens, visited_nonterminals)
             else
-              collectedTokens[gs] = true 
+              collected_tokens[gs] = true 
             end
           end
         end
       end
     end
-        
+       
+    
     # For debugging
     def show_stack
       @logger.info("Stack: #{@stack.inspect}") if @logger
@@ -300,14 +259,16 @@ module Kanocc
     end
   end
   
-  class ParseException < Exception 
-    attr_accessor :inputPos, :inputSymbol, :expected 
-    def initialize(inputPos, inputSymbol, expected)
-      @inputPos, @inputSymbol, @expected = inputPos, inputSymbol, expected
-    end
-  end
-  
   class KanoccException < Exception
+  end
+
+  class ParseException < KanoccException
+    attr_reader :offendingInput, :expectedTerminals, :pos
+    def initialize(message, offendingInput, expectedTerminals, pos)
+      @offendingInput, @expectedTerminals, @pos = 
+	offendingInput, expectedTerminals, pos
+      super(message)
+    end
   end
 end
 

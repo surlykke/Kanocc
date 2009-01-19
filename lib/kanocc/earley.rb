@@ -18,6 +18,9 @@
 require 'kanocc/grammar_rule'
 require 'kanocc/token'
 require 'logger'
+
+require 'rubygems'
+require 'ruby-debug'
 module Kanocc
   #
   # Parser for Kanocc based on Earleys algorithm. For a description see:
@@ -33,27 +36,64 @@ module Kanocc
   # Christian Surlykke 2007.
   #
   class EarleyParser
-    attr_accessor :kanocc, :logger
+    attr_accessor :kanocc, :logger 
     
     ErrorRule = GrammarRule.new(Error, [], nil)
     
     def initialize(kanocc, options = {})
       @kanocc = kanocc
-      @logger = options[:logger] || Logger.new
+      @scanner = Scanner.new
+      self.logger = options[:logger] || Logger.new
     end
 
+    def logger=(logger)
+      @logger = logger
+      @scanner.logger = @logger
+    end
     #
     # Sets up the parser, creating itemlist 0.
     #
-    def startsymbol=(startSymbol)
+    def start_symbol=(startSymbol)   
+      @scanner.set_recognized(*(@kanocc.find_tokens(startSymbol)))
       @start_symbol = startSymbol
-      @itemLists = [ItemList.new(nil, 0)]
+      @itemLists = [ItemList.new(0)]
       @inputPos = 0
       @recoveryPoints = []
       @itemLists[0].add_all(@start_symbol.rules.map{|rule| Item.new(rule, 0)})
       predict_and_complete(0)
     end
     
+    def set_whitespace(*ws)
+      @scanner.set_whitespace(*ws)
+    end
+    
+    def parse(input)
+      @scanner.input = input 
+      prepare	
+      
+      while (@scanner.next_match!) do
+        @inputPos += 1
+        @itemLists.push(ItemList.new(@inputPos))
+    
+        # scan, predict and complete until no more can be added
+        consume_token
+        predict_and_complete(@inputPos) 
+        @logger.debug("@itemLists[#{@inputPos}]: " + @itemLists[@inputPos].inspect) 
+	handle_error if @itemLists[@inputPos].size == 0 
+      end
+     
+      for i in 0..@inputPos do
+        @logger.info("\n" + @itemLists[i].inspect)
+      end
+ 
+      top_item = find_full_items(@start_symbol, @inputPos).find_all {|item| item.j == 0}.max
+      if top_item 
+        translate(top_item, @inputPos)
+      else
+        raise(KanoccException, "It didn't parse")
+      end
+    end
+
     def prepare
       @itemLists = @itemLists[0..0]
       @inputPos = 0
@@ -62,23 +102,26 @@ module Kanocc
       else
         @recoveryPoints = []
       end
-      @logger.info("Itemlist 0:\n" + @itemLists[0].inspect) unless not @logger
+      @logger.info("Itemlist 0:\n" + @itemLists[0].inspect) if @logger
     end
 
-   
-    def scan(token_match) 
-      token_match[:matches].each do |match| 
-        if match[:token] 
+    def consume_token 
+      @itemLists[@inputPos].inputSymbol = @scanner.current_match
+      @scanner.current_match[:matches].each do |match| 
+	if match[:token] 
 	  symbol = match[:token]
         else
           symbol = match[:literal]
         end
-	items = @itemLists[@inputPos - 1].find_matching(symbol)
-	@itemLists[@inputPos].add_all(items.map{|item| item.move})
+        @itemLists[@inputPos - 1].each do |item| 
+          if symbol === item.symbol_after_dot or symbol == item.symbol_after_dot	  
+	    @itemLists[@inputPos].add(item.move)
+          end
+        end
       end
     end
     
-    def predict_and_complete(pos)
+    def predict_and_complete(pos, show=false)
       item_list = @itemLists[pos] 
       prev_size = 0      
       while prev_size < item_list.size do 
@@ -86,66 +129,68 @@ module Kanocc
 	item_list.each do |item|
 	  if item.rule.rhs.length <= item.dot
             # complete 
-	    item_list.add_all(@itemLists[item.j].find_matching(item.rule.lhs).map{|item| item.move})
+            newItems = @itemLists[item.j].find_matching(item.rule.lhs).map{|item| item.move}
+            item_list.add_all(newItems)
           elsif (nont = item.rule.rhs[item.dot]).respond_to?(:rules)  
             # predict
-	    item_list.add_all(nont.rules.map {|rule| Item.new(rule, @inputPos)})
+            newItems = nont.rules.map {|rule| Item.new(rule, pos)}
+	    item_list.add_all(newItems)
 	  end
         end
       end 
     end
-    
-    def add_recovery_points(pos)
-      if @recoveryPoints[-1] != pos
-	@itemLists[pos].each do |item| 
-	  if Error == item.rule.rhs[item.dot]
-	    @recoveryPoints.push(pos)
-	    break
-	  end
-	end
+       
+    def handle_error
+         
+      if j = find_error_items() 
+        @itemLists[@inputPos - 1].add(Item.new(ErrorRule, j)) 
+        predict_and_complete(@inputPos - 1, true)
+ 	consume_token
+	predict_and_complete(@inputPos)
+        @logger.info("Itemlist #{@inputPos} after error handling:\n" + 
+	             @itemLists[@inputPos].inspect) if @logger
       end
     end
-   
-    #
-    # Consume and parse next input symbol
-    #
-    def consume(token_match) 
-      @inputPos += 1
-      @itemLists.push(ItemList.new(token_match, @inputPos))
-  
-      # scan, predict and complete until no more can be added
-      scan(token_match)
-      
-      if @itemLists[@inputPos].size == 0
-        @logger.debug("Found no items matching #{token_match} in itemlist #{@inputPos - 1}")
-        @logger.debug("@recoveryPoints = " + @recoveryPoints.inspect)	
-        for i in 1..@recoveryPoints.length do 
-          if @recoveryPoints[-i] < @inputPos
-            @itemLists[@inputPos - 1].add(Item.new(ErrorRule, @recoveryPoints[-i]))
-            predict_and_complete(@inputPos - 1) 
-	    scan(token_match) 
-	    break if @itemLists[@inputPos].size > 0 
-          end
+
+    def find_error_items
+      for i in (@inputPos - 1).downto(0) do
+        return i if @itemLists[i].items.keys.find {|item| item.rule.rhs[item.dot] == Error }
+      end
+      return nil
+    end
+
+    def create_error_item(j)
+      rule = Error.rules[0]
+      return Item.new(rule, j, 0)
+    end
+
+    def report_parsing_error(token_match)
+         expectedTerminals = 
+	  @itemLists[@inputPos - 1].map { |item| item.rule.rhs[item.dot]}.find_all do |gs|
+	    gs.is_a? String or (gs.is_a? Class and gs.ancestors.include?(Token))
+          end.uniq
+	        
+	errorMsg = "Could not consume input: #{token_match[:string].inspect}" +
+                   " at position: #{token_match[:start_pos].inspect}"
+	if expectedTerminals.size > 0
+	  errorMsg += " - expected " +
+	              "#{expectedTerminals.map {|t| t.inspect}.join(" or ")}" 
+        else 
+          errorMsg += " - no input could be consumed at this point." 
         end
-      end
-      predict_and_complete(@inputPos) 
-      add_recovery_points(@inputPos)
-      @logger.info("Itemlist #{@inputPos}:\n" + @itemLists[@inputPos].inspect) if @logger
-    end
-   
-    
+	
+        raise ParseException.new(errorMsg, 
+	                         token_match[:string], 
+			         expectedTerminals,
+			         token_match[:start_pos])
+
+    end 
 
 
     #
     # Signal to the parser that end of input is reached
     #
     def eof
-      top_item = find_full_items(@start_symbol, @inputPos).find_all {|item| item.j == 0}.max
-      if top_item 
-        translate(top_item, @inputPos)
-      else
-        raise(KanoccException, "It didn't parse")
-      end
     end
     
     def translate(element, pos)
@@ -160,8 +205,8 @@ module Kanocc
     
     def translate_helper(item, pos)
       @logger.debug("translateHelper: " + item.inspect + " on " + pos.inspect) 
-      return if item.dot == 0 
-      if item.rule.rhs[item.dot - 1].respond_to?("rules")
+      return if item.dot == 0
+      if item.rule.rhs[item.dot - 1].respond_to?("rules")  
         # Assume item is of form [A --> aB*c, k] in itemlist i
         # Must then find item of form [B --> x*, j] in itemlist i so 
         # that there exists item of form [A --> a*Bc, k] on itemlist j
@@ -171,6 +216,7 @@ module Kanocc
         
         # Then: Those for which item of form [A --> a*Bc, k] exists
         # on list j
+	@logger.debug("thinning candidates, which are: " + candidates.inspect)
         candidates = candidates.find_all {|subItem|
           @itemLists[subItem.j].find_item(item.rule, item.dot - 1, item.j)
         }
@@ -198,12 +244,11 @@ module Kanocc
   end 
   
   class ItemList
-    attr_reader :inputSymbol
+    attr_accessor :inputSymbol
     attr_accessor :items
     
-    def initialize(inputSymbol, inputPos)
+    def initialize(inputPos)
       @inputPos = inputPos
-      @inputSymbol = inputSymbol
       @items = Hash.new 
     end
     
@@ -220,13 +265,18 @@ module Kanocc
     def find_all(&b)
       return @items.keys.find_all(&b)
     end
-    
+   
+    def map(&b)
+      return @items.keys.map(&b)
+    end
+
     def find_item(rule, dot, j)
-      return @items.keys.find{ |item| 
+      res =  @items.keys.find{ |item| 
         item.rule == rule and 
         item.dot == dot and
         item.j == j
       }
+      return res
     end
     
     def each_matching(inputSymbol)
@@ -250,7 +300,7 @@ module Kanocc
     end
     
     def add_all(items)
-      items.each {|item| @items.store(item, true)}
+      items.each {|item| add(item)}
     end
 
     def each
@@ -260,7 +310,7 @@ module Kanocc
     end
     
     def inspect
-      return "[" + @inputSymbol.inspect + "\n " + 
+      return "[" + (@inputSymbol ? @inputSymbol[:string] : nil).inspect + "\n " + 
                    @items.keys.map{|item| item.inspect}.join("\n  ") + "]\n" 
     end
   end
@@ -304,7 +354,7 @@ module Kanocc
     def <=>(other)
       res = @rule.prec <=> other.rule.prec;
       if res == 0 and @rule.operator_prec and other.rule.operator_prec 
-         res = other.rule.operator_prec <=> @rule.operator_prec
+	res = other.rule.operator_prec <=> @rule.operator_prec
       end
       if res == 0
         res = @j <=> other.j 

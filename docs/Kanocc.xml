@@ -1,0 +1,1084 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN"
+                      "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<book>
+
+<bookinfo>
+
+<title>Kanocc</title>
+
+<subtitle>Kanocc ain't no compiler-compiler</subtitle>
+
+<subtitle>
+  Documentation for the ruby framework 'Kanocc', 
+  which offers parsing and translation functionality.
+</subtitle>
+
+<author>
+  <firstname>Christian</firstname>
+  <surname>Surlykke</surname>
+</author>
+
+<copyright>
+  <year>2008</year>
+  <year>2009</year>
+  <holder>Christian Surlykke</holder>
+</copyright>
+
+<legalnotice>
+<para>
+This work is licensed under the Creative Commons Attribution-Share Alike 3.0 Unported License. 
+To view a copy of this license, visit 
+<ulink url="http://creativecommons.org/licenses/by-sa/3.0/">&#65533;</ulink> or send 
+a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco, California, 94105, USA.
+</para>
+</legalnotice>
+
+</bookinfo>
+
+
+<chapter>
+<title>Introduction</title>
+
+
+<sect1>
+<title>What is Kanocc?</title>
+
+<para>
+Kanocc is a Ruby-framework for parsing and translating for context-free grammars. 
+</para>
+
+<para>
+Kanocc tries to be 'scripty': Emphasis is on ease of use and seamless integration 
+with your Ruby programs. Performance is a secondary concern - so you probably won't 
+use Kanocc to do a production quality C++ compiler. 
+</para>
+<para>
+I imagine that Kanocc could be 
+useful, for example, when your program is reading input that is best analyzed using 
+parsing techniques, or if you create a small domain specific language.
+</para>
+
+<para>
+Unlike compiler-compilers such as yacc or bison, Kanocc doesn't produce an intermediate 
+file (like a c-program) to be run through a compiler to produce an executable. Kanocc 
+will read your grammar and then parse and execute your input in one run. Hence it's name. 
+</para>
+
+</sect1>
+
+<sect1>
+<title>Disclaimers </title>
+
+<para>
+  
+
+<itemizedlist>
+<listitem>
+
+<para>
+English is not my native language, and it shows in this document. My apologies.
+</para>
+</listitem>
+<listitem>
+
+<para>
+Kanocc is largely untested software, so it will burn down your house, and break. 
+If this happens, you get to keep the pieces.
+</para>
+</listitem>
+
+</itemizedlist>
+
+</para>
+
+</sect1>
+
+<sect1>
+<title>Reading this document</title>
+
+<para>
+In the following it's assumed that you have knowledge of parsers, grammars and
+syntax-directed translation. If not, you'll have to do some reading. 
+There is a lot of literature you can choose from. In particular I recommend 
+<ulink url="http://books.google.com/books?id=U92GGgAACAAJ&#38;dq=compilers+principles+techniques+and+tools">
+  Compilers: Principles, Techniques and Tools
+</ulink> (The Dragonbook), which was where I learned about the subject. 
+Also, the 
+<ulink url="http://www.gnu.org/software/bison/manual/index.html">
+  Bison manual
+</ulink> contains much useful information.
+</para>
+
+<para>
+It is also assumed that you have working knowledge of Ruby
+</para>
+
+<sect2>
+<title>Notation</title>
+
+<para>
+Program examples will be shown like this:
+
+<screen>
+class A
+  def initialize
+    puts "In A's initializer..."
+  end
+end
+
+A.new
+</screen>
+
+</para>
+
+<para>
+Output will be shown as:
+
+<screen>
+In A's initializer...
+</screen>
+
+</para>
+
+<para>
+<literal remap="tt">Foo&num;bar</literal> means the <emphasis>instance</emphasis>-method <literal remap="tt">bar</literal> of the class <literal remap="tt">Foo</literal>.
+</para>
+
+<para>
+<literal remap="tt">Foo.bar</literal> means the <emphasis>class</emphasis>-method <literal remap="tt">bar</literal> of the class <literal remap="tt">Foo</literal>.
+</para>
+
+</sect2>
+
+</sect1>
+
+<sect1>
+<title>Getting and installing Kanocc</title>
+
+<para>
+Kanocc is availabl as a gem from RubyForge. From the command-prompt, do:
+<screen>
+gem install kanocc
+</screen>
+and then in your Ruby-scripts:
+<screen>
+require 'rubygems'
+require 'kanocc'
+</screen>
+</para>
+</sect1>
+</chapter>
+
+<chapter>
+<title>Writing an interpreter</title>
+
+<para>
+In this chapter we'll look at how to write an interpreter using Kanocc. 
+</para>
+
+<para>
+Most texts on grammars, parsers and such use arithmetic expressions as example. 
+Obviously we don't want to be at odds with this tradition, so we'll do a simple interpreter,
+that can understand and evaluate simple arithmetic expressions.
+</para>
+
+<para>
+The grammar looks like this:
+
+<screen>
+Expr    ::= Expr "+" Term 
+          | Expr "-" Term
+          | Term
+  
+Term    ::= Term "*" Factor
+          | Term "/" Factor
+          | Factor
+
+Factor  ::= Number
+          | "(" Expr ")"
+</screen>
+
+</para>
+
+<para>
+This grammar is made up of the nonterminals <literal remap="tt">Expr</literal>, <literal remap="tt">Term</literal> and <literal remap="tt">Factor</literal>
+and 9 tokens:
+<literal remap="tt">Number</literal> which is suppose to match a sequence of digits, and 8 string literalss: 
+<literal remap="tt">"("</literal>, <literal remap="tt">")"</literal>, <literal remap="tt">"+"</literal>, <literal remap="tt">"-"</literal>, <literal remap="tt">"*"</literal>, <literal remap="tt">"/"</literal>, <literal remap="tt">"\n"</literal>, <literal remap="tt">"exit"</literal>
+</para>
+
+<para>
+With Kanocc, you can do an interpreter for the above grammar like this:
+
+<screen>
+require "rubygems"   
+require "kanocc"
+
+# ==================================================
+# Define the token 'Number' and what it matches 
+        
+class Number &lt; Kanocc::Token 
+  attr_reader :val 
+  pattern(/\d+/) { @val = @m[0].to_i} 
+end
+ 
+# ==================================================
+# Define the nonterminals Expr, Term and Factor with
+# their rules
+       
+# First, a forward declarations
+class Expr &lt; Kanocc::Nonterminal 
+end   
+  
+# Then - the real stuff.
+class Factor &lt; Kanocc::Nonterminal 
+  attr_reader :val
+  rule(Number) {@val = @rhs[0].val}
+  rule("(", Expr, ")") { @val = @rhs[1].val}
+end
+
+class Term &lt; Kanocc::Nonterminal 
+  attr_reader :val
+  rule(Term, "*", Factor) { @val = @rhs[0].val * @rhs[2].val}
+  rule(Term, "/", Factor) { @val = @rhs[0].val / @rhs[2].val} 
+  rule(Factor) {@val = @rhs[0].val}
+end
+
+class Expr 
+  attr_reader :val 
+
+  rule(Expr, "+", Term) { @val = @rhs[0].val + @rhs[2].val}
+  rule(Expr, "-", Term) { @val = @rhs[0].val - @rhs[2].val}
+  rule(Term) { @val = @rhs[0].val} 
+end
+
+# ========== Set up a parser for Expr ============= 
+myParser = Kanocc::Kanocc.new(Expr) 
+ 
+# ========== And try it out ======================= 
+puts myParser.parse('3 + 4 - 2').val 
+puts myParser.parse('8 - 2 * 3').val 
+</screen>
+
+</para>
+
+<para>
+If you run this script, you'll get:
+
+<screen>
+5 
+2 
+</screen>
+
+</para>
+
+<para>
+In the following we will go through the elements of this example
+</para>
+
+<sect1>
+<title>Tokens</title>
+
+<para>
+In our example we defined a class <literal remap="tt">Number</literal>, extending <literal remap="tt">Kanocc::Token</literal>.
+</para>
+
+<para>
+By calling <literal remap="tt">Kanocc::Token.pattern</literal> we tell Kanocc how Numbers look. 
+The method <literal remap="tt">pattern</literal> must be given a regular expression as argument.
+</para>
+
+<para>
+By referring to <literal remap="tt">Number</literal> in our rules, we make Kanocc look for <literal remap="tt">Number</literal>
+during lexical scanning. 
+</para>
+
+<para>
+Obviously, string literal tokens (such as <literal remap="tt">"("</literal>, <literal remap="tt">"exit"</literal>, <literal remap="tt">"\n"</literal>,..)
+doesn't need to have patterns attached. All you have to do is mention them in grammarrules,
+and Kanocc will look for them in the input.
+</para>
+
+<para>
+Tokens must always have a parameterless <literal remap="tt">initialize</literal> method, 
+so that Kanocc knows how to create instances.
+</para>
+
+<sect2>
+<title>Semantics</title>
+
+<para>
+You'll have noticed that the method <literal remap="tt">Kanocc::Token.pattern</literal> takes a block
+it's final argument. This allows you to initialize the token instances that Kanocc creates.
+</para>
+
+<para>
+When Kanocc recognizes a token (of the <literal remap="tt">Kanocc::Token</literal> kind) in input, it will do the following:
+
+<orderedlist>
+<listitem>
+
+<para>
+Create an instance of the token - in our example above an instance of <literal remap="tt">Number</literal> - using it's 
+parameterless constructor. 
+</para>
+</listitem>
+<listitem>
+
+<para>
+Create a <literal remap="tt">Match</literal> object by applying the regular expression you gave, to 
+the portion of input being matched, and inject it into the newly created instance 
+(of <literal remap="tt">Number</literal>) as <literal remap="tt">@m</literal>
+</para>
+</listitem>
+<listitem>
+
+<para>
+Execute the block given to <literal remap="tt">pattern</literal> in the context of the newly created instance.
+</para>
+</listitem>
+
+</orderedlist>
+
+Note how, in our example, this allows us to set <literal remap="tt">@val</literal> in those instances of <literal remap="tt">Number</literal> 
+that Kanocc creates during parsing.
+</para>
+
+</sect2>
+
+<sect2>
+<title>More than one pattern</title>
+
+<para>
+It is possible to call <literal remap="tt">pattern</literal> more than once in a Token class. As an example let's 
+say we want to allow input of numbers in both decimal and hexadecimal form. We could then change the 
+definition of the class <literal remap="tt">Num</literal> to:
+</para>
+
+<para>
+
+<screen>
+class Num &lt; Kanocc::Token 
+  attr_reader :val 
+  pattern(/0x[0-9A-F]+/) { @val = @m[0].hex } # Hex notation
+  pattern(/\d+/) { @val = @m[0].to_i}  # Decimal notation 
+end
+</screen>
+
+</para>
+
+<para>
+With this change, the calculator in our example above will be able to accept expressions like:
+
+<screen>
+"0xA3 + 7"
+</screen>
+
+</para>
+
+</sect2>
+
+<sect2>
+<title>Precedence</title>
+
+<para>
+TODO        
+</para>
+
+</sect2>
+
+</sect1>
+
+<sect1>
+<title>Whitespace</title>
+
+<para>
+By default Kanocc considers anything that matches the regular expression <literal remap="tt">/\s/</literal>,
+whitespace. 
+</para>
+
+<para>
+You may redefine this, if you wish, by calling the method <literal remap="tt">Kanocc::Kanocc&num;setWhitespace</literal>.
+<literal remap="tt">setWhitespace</literal> takes a list of regular expressions as argument.
+</para>
+
+<para>
+For example, to define that spaces, tabs and anything from a '<literal remap="tt">&num;</literal>' to lineending is whitespace, 
+you can do:
+
+<screen>
+  myParser.setWhitespace(/ /, /\t/, /#.*/)
+</screen>
+
+- or, if you prefer:
+
+<screen>
+  myParser.setWhitespace(/ |\t|#.*/)
+</screen>
+
+</para>
+
+<para>
+You have all the power of Ruby regular expressions at your disposal here.
+</para>
+
+<para>
+If you're <emphasis>very</emphasis> observant, you'll have noticed that the literal <literal remap="tt">"\n"</literal> which 
+we used in our example above is also whitespace. This is ok. Kanocc will always try first to form 
+tokens from input. If that's not possible it will try to discard some of it as whitespace. If
+that isn't possible either, Kanocc will form a literal token from the first character of the remaining input
+</para>
+
+<para>
+This scheme has the nice quality that lexical scanning (the process of transforming input to a 
+stream of tokens) never fails.
+</para>
+
+</sect1>
+
+<sect1>
+<title>Nonterminals</title>
+
+<para>
+In our example we defined 3 classes: <literal remap="tt">Expr</literal>, <literal remap="tt">Term</literal> and <literal remap="tt">Factor</literal>, 
+each of them extending <literal remap="tt">Kanocc::Nonterminal</literal>. 
+This is how we tell Kanocc about the nonterminals of our grammar.
+</para>
+
+<para>
+Inside each class definition we make calls to the static method <literal remap="tt">rule</literal>.
+With this we define the grammarrules belonging to that that particular nonterminal. 
+For examle, we told Kanocc about the rule:
+
+<screen>
+  
+Expr ::= Expr "+" Term
+</screen>
+
+with the call
+
+<screen>
+rule(Expr, "+", Term) {@val = @rhs[0].val + @rhs[2].val}
+</screen>
+
+</para>
+
+<para>
+The arguments to calls to <literal remap="tt">rule</literal> must be nonterminals 
+(that means: classes that inherit from <literal remap="tt">Kanocc::Nonterminal</literal>), 
+tokens (classes that inherit from <literal remap="tt">Kanoc::Token</literal>) or strings. 
+</para>
+
+<para>
+The parameterlist may be followed by a block, defining the semantic actions to take when 
+the reduction is performed.
+</para>
+
+<para>
+Nonterminals must always have parameterless <literal remap="tt">initialize</literal> method so Kanocc 
+can create instances of them.
+</para>
+
+<sect2>
+<title>Semantics</title>
+
+<para>
+Like <literal remap="tt">Token.pattern</literal>, <literal remap="tt">Nonterminal.rule</literal> accepts a block as it's final argument. 
+This allows you to attach semantics to grammarrules.
+</para>
+
+<para>
+Whenever Kanocc reduces by a grammarrule, it creates an instance of the class (Nonterminal)
+that has the rule. 
+</para>
+
+<para>
+For example, when reducing by the rule
+
+<screen>
+Expr ::= Expr "+" Term
+</screen>
+
+Kanocc will create an instance of the class Expr. This happens bottom-up, so at this point Kanocc 
+will already have made instances of the nonterminals on the right-hand side 
+of the rule (<literal remap="tt">Expr</literal> and <literal remap="tt">Term</literal>). 
+</para>
+
+<para>
+Lets call these instances <literal remap="tt">expr</literal> and <literal remap="tt">term</literal>, respectively.
+</para>
+
+<para>
+When Kanocc does the reduction it:
+
+<orderedlist>
+<listitem>
+
+<para>
+Calls <literal remap="tt">Expr.new </literal> to create a new instance of <literal remap="tt">Expr</literal>.
+</para>
+</listitem>
+<listitem>
+
+<para>
+Injects the array <literal remap="tt">[expr, "+", term]</literal> into this instance as <literal remap="tt">@rhs</literal>
+</para>
+</listitem>
+<listitem>
+
+<para>
+Excecutes the given block in the context of this new instance.
+</para>
+</listitem>
+
+</orderedlist>
+
+Note how, in our example above, this allows us to set @val in the class instances Kanocc creates.
+</para>
+
+</sect2>
+
+<sect2>
+<title>Precedence</title>
+
+<para>
+In our example above, we used an <emphasis>unambigous</emphasis> grammar. 
+</para>
+
+<para>
+We might, however, prefer the following ambigous grammar:
+
+<screen>
+Expr ::= Expr '+' Expr
+       | Expr - Expr
+       | Expr * Expr
+       | Expr / Expr
+       | '(' Expr ')'
+       | Number
+</screen>
+
+</para>
+
+<para>
+This grammar is ambigous. For example it doesn't specify whether to interpret the expression
+<literal remap="tt"> 8 - 2 * 3 </literal> as <literal remap="tt"> (8 - 2) * 3 </literal> or <literal remap="tt"> 8 - (2 * 3) </literal>.
+</para>
+
+<para>
+The remedy for this is <emphasis>precedence</emphasis> which we will look at now.
+</para>
+
+<sect3>
+<title>Rule-precedence</title>
+
+<para>
+You assign precedence to a rule by following the call to rule by a call to 
+
+<screen>
+Nonterminal.prec
+</screen>
+ 
+with an integer as argument. Default precedence is 0, so if you give a precedence &#62; 0 
+you increase precedence - i.e make Kanocc more inclined to use the production.
+</para>
+
+<para>
+Using rule precedence, we can rewrite our example to:  
+
+<screen>
+require "rubygems"   
+require "kanocc"
+
+class Number &lt; Kanocc::Token 
+  attr_reader :val 
+  pattern(/\d+/) { @val = @m[0].to_i} 
+end
+         
+class Expr &lt; Kanocc::Nonterminal 
+  attr_reader :val 
+        
+  rule(Expr, "+", Expr) { @val = @rhs[0].val + @rhs[2].val}
+  rule(Expr, "-", Expr) { @val = @rhs[0].val - @rhs[2].val}
+  rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; prec -1
+  rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val}; prec -1 
+  rule("(", Expr, ")") { @val = @rhs[1].val}
+  rule(Number) {@val = @rhs[0].val}
+end
+
+myParser = Kanocc::Kanocc.new(Expr) 
+ 
+puts myParser.parse('3 + 4 - 2').val 
+puts myParser.parse('8 - 2 * 3').val 
+</screen>
+
+The two calls to <literal remap="tt">prec</literal> gave the rules for multiplication and division higher precedence.
+</para>
+
+<para>
+Note that we gave multiplication and division a <emphasis>lower</emphasis> precedence. 
+This seems counter intuitive, as we know
+that the mathematical operators <literal remap="tt">'*'</literal> and 
+<literal remap="tt">'/'</literal> have <emphasis>higher</emphasis> precedence 
+than '+' and '-'. 
+The reason for this quirk is that the Earley parsing algorithm, 
+which is employed by Kanocc, constructs the parsetree 
+<emphasis>top-down</emphasis> and then evaluates it 
+<emphasis>bottom-up</emphasis>. To parse our input, 
+say <literal remap="tt">'8 - 2 * 3'</literal>, the Earley parser must
+find a way to expand the nonterminal <literal remap="tt">Expr</literal> to the 
+string <literal remap="tt">'8 - 2 * 3'</literal>. 
+This can be done in two ways:
+
+<screen>
+            Expr
+           /  | \
+          /   |  \
+        Expr '-'  Expr
+                 /  | \
+                /   |  \
+             Expr  '*'  Expr
+</screen>
+or
+<screen>
+            Expr
+           /  | \
+          /   |  \
+        Expr '*'  Expr
+       /  | \
+      /   |  \
+   Expr  '-'  Expr
+
+</screen>
+
+Clearly, what we want is the first variant, so we need to make Kanocc choose the
+operator <literal>'-'</literal> <emphasis>before</emphasis> <literal>'*'</literal>. 
+Therefore we must 
+give <literal>'-'</literal> a <emphasis>higher</emphasis> precedence 
+than <literal>'*'</literal>.
+</para>
+
+</sect3>
+
+<sect3>
+<title>Operator precedence</title>
+
+<para>
+  
+You can call:
+
+<screen>
+Kanocc::Nonterminal.oPrec
+</screen>
+
+to assign precedence to an operator in your grammar. For example: 
+
+<screen>
+oPrec('*', -).
+</screen>
+
+</para>
+
+<para>
+In our example we could have defined the class <literal remap="tt">Expr</literal> as:
+
+<screen>
+class Expr &lt; Kanocc::Nonterminal 
+  attr_reader :val 
+        
+  rule(Expr, "+", Expr) { @val = @rhs[0].val + @rhs[2].val}
+  rule(Expr, "-", Expr) { @val = @rhs[0].val - @rhs[2].val}
+  rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; 
+  rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val};  
+  rule("(", Expr, ")") { @val = @rhs[1].val} 
+  rule(Num) { @val = @rhs[0].val} 
+  oPrec('*', '/', -1)
+end.
+</screen>
+
+</para>
+
+<para>
+When you define operator precedence like this, Kanocc will apply it to those rules that have the operator as it's
+first terminal on the righthand-side. (I think this is how Yacc/Bison works.)
+</para>
+
+<para>
+The method  <literal remap="tt">Kanocc.oPrec</literal> takes a variable number of arguments. If you give it 
+<literal remap="tt">N</literal> arguments, the first <literal remap="tt">N-1</literal> of them must be terminals and the last must be a number.
+</para>
+
+<para>
+When you call <literal remap="tt">Kanocc::Nonterminal.oPrec</literal> like this, it will have effect when Kanocc is considering two
+rules belonging to the nonterminal where you made the call - in this example <literal remap="tt">Expr</literal>.
+</para>
+
+<para>
+Alternatively you can define operator precedence globally, calling:
+
+<screen>
+Kanocc.oPrec. 
+</screen>
+
+In our example it would look like:  
+
+<screen>
+class Expr &lt; Kanocc::Nonterminal 
+  attr_reader :val 
+          
+  rule(Expr, "+", Expr) { @val = @rhs[0].val + @rhs[2].val}
+  rule(Expr, "-", Expr) { @val = @rhs[0].val - @rhs[2].val}
+  rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; 
+  rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val};  
+  rule("(", Expr, ")") { @val = @rhs[1].val} 
+  rule(Num) { @val = @rhs[0].val} 
+end.
+</screen>
+
+- and then:
+
+<screen>
+myParser = Kanocc::Kanocc.new
+myParser.oPrec('*', '/', -1)
+</screen>
+
+</para>
+
+<para>
+Operator precedence defined like this will have effect when Kanocc is 
+considering any pair of rules. 
+</para>
+
+<para>
+In some languages an operator may have different 
+meanings in different contexts. Think, for example, about the operator '*' in C. 
+It can mean multiplication and pointer-indirection. By making your 
+operator-precedence assignments at the nonterminal level, you can make 
+your grammar more readable.
+</para>
+
+</sect3>
+
+</sect2>
+
+</sect1>
+
+<sect1>
+<title>Setting up the parser</title>
+
+<para>
+Once you have your tokens and nonterminals in place, the rest is simple: 
+Construct an instance of <literal remap="tt">Kanocc::Kanocc</literal> with the startsymbol
+of your grammar as argument. 
+</para>
+
+<para>
+Then call Kannoc&num;parse with the input as argument, and Kanocc will try
+to reduce the input to the given startsymbol. If succesful, an instance 
+of that startsymbol will be returned.
+</para>
+
+<para>
+In our example:
+
+<screen>
+myParser = Kanocc::Kanocc.new(Expr)
+puts myParser.parse('8 - 3 * 2').val
+</screen>
+
+did that.
+</para>
+
+</sect1>
+
+</chapter>
+
+<chapter>
+<title>Lists</title>
+
+<para>
+Often, a language you define will contain lists of stuff. Kanocc comes with 
+two metods for this particular purpose: <literal remap="tt">zm</literal> ('zero or more') and <literal remap="tt">om</literal> ('one or more'). 
+</para>
+
+<para>
+Both methods take as their first argument the grammarsymbol that make up the list, 
+and as an optional second parameter, a symbol that will be used as a separator.
+</para>
+
+<para>
+Thus, <literal remap="tt">zm(A)</literal>, means a (possibly empty) list of <literal remap="tt">A</literal>'s, and 
+<literal remap="tt">zm(A, ";")</literal> means a (possibly empty) list of <literal remap="tt">A</literal>'s separated by semicolons.
+</para>
+
+<para>
+You may also feed <literal remap="tt">zm</literal> and <literal remap="tt">om</literal> arrays - <literal remap="tt">zm([A, B, C], ",")</literal> would accept lists like:
+
+<screen>
+A B C, A B C, A B C, A B C
+</screen>
+
+</para>
+
+<para>
+Say we wanted to extend our parser above, so that it accepts several expressions, 
+each on one line. We could rewrite the parser like this:
+
+<screen>
+require "rubygems"   
+require "kanocc"
+
+class Number &lt; Kanocc::Token 
+attr_reader :val 
+pattern(/\d+/) { @val = @m[0].to_i} 
+end
+
+
+class Expr &lt; Kanocc::Nonterminal 
+  attr_reader :val 
+
+  rule(Expr, "+", Expr) { @val = @rhs[0].val + @rhs[2].val}
+  rule(Expr, "-", Expr) { @val = @rhs[0].val - @rhs[2].val}
+  rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; prec 1
+  rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val}; prec 1 
+  rule("(", Expr, ")") { @val = @rhs[1].val}
+  rule(Number) {@val = @rhs[0].val}
+end
+
+class Program &lt; Kanocc::Nonterminal
+  rule(zm(Expr, "\n")) { @rhs[0].each {|expr| puts expr.val}
+end
+
+Kanocc::Kanocc.new(Program).parse 
+</screen>
+
+</para>
+
+<para>
+As an other example, consider compund statements - a sequence of statements surrounded by 
+<literal remap="tt">"begin"</literal> and <literal remap="tt">"end"</literal> and separated by semicolons. For example:
+
+<screen>
+begin
+  &#60;stmt&#62;;
+  &#60;stmt&#62;;
+  &#60;stmt&#62;
+end
+</screen>
+
+</para>
+
+<para>
+In Kanocc you can write a grammar for that like:
+
+<screen>
+class CompoundStatement &lt; Kanocc::Nonterminal
+  rule("begin", zm(Statement, ";"), "end")
+end
+</screen>
+
+</para>
+
+</chapter>
+
+<chapter>
+<title>Errors</title>
+
+<para>
+Suppose you try this:
+</para>
+
+<para>
+
+<screen>
+require "rubygems"   
+require "kanocc"
+
+class Number &lt; Kanocc::Token 
+  attr_reader :val 
+  pattern(/\d+/) { @val = @m[0].to_i} 
+end
+         
+class Expr &lt; Kanocc::Nonterminal 
+  attr_reader :val 
+        
+  rule(Expr, "+", Expr) { @val = @rhs[0].val + @rhs[2].val}
+  rule(Expr, "-", Expr) { @val = @rhs[0].val - @rhs[2].val}
+  rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; prec 1
+  rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val}; prec 1 
+  rule("(", Expr, ")") { @val = @rhs[1].val}
+  rule(Number) {@val = @rhs[0].val}
+end
+
+myParser = Kanocc::Kanocc.new(Expr) 
+ 
+puts myParser.parse('3 + 4 - -').val 
+</screen>
+
+I.e feeding your parser some input that is not syntactically correct.
+</para>
+
+<para>
+You'll get something like:
+
+<screen>
+/home/christian/projekter/Kanocc/lib/kanocc/earley.rb:166:in `reportParsingError': 
+    Could not consume input: "-" at position: 8 - expected Number or "(" (Kanocc::ParseException)
+        from /home/christian/projekter/Kanocc/lib/kanocc/earley.rb:135:in `consume'
+        from /home/christian/projekter/Kanocc/lib/kanocc.rb:133:in `parse'
+        from /home/christian/projekter/Kanocc/lib/kanocc/scanner.rb:72:in `each_token'
+        from /home/christian/projekter/Kanocc/lib/kanocc.rb:130:in `parse'
+        from ./doc_calc.rb:49
+</screen>
+
+</para>
+
+<para>
+This is the most basic error-handling Kanocc offers: When it finds that input cannot parse according to the grammar, it will terminate parsing ant raise a <literal remap="tt">Kanocc::ParseException</literal>. This exception will contain the offending input token, it's position, and a list of terminals that Kanocc was expecting at that point.  
+</para>
+
+</chapter>
+
+<chapter>
+<title>Error recovery </title>
+
+<para>
+Rather than aborting parsing when an error is discovered, it can be nice to be able to skip an error and continue parsing, so that at least all (or most of) the errors in input can be reported in one run.
+</para>
+
+<para>
+Kanocc has a special nonterminal <literal remap="tt">Kanocc::Error</literal> which may be used on the 
+right-hand-side of rules. <literal remap="tt">Error</literal> can expand to anything, and rules containing 
+<literal remap="tt">Error</literal> on their right-hand-side will have a precedence of negative infinity. In other words: 
+A rule containing <literal remap="tt">Error</literal> will only be used if Kanocc can see no other way to reduce 
+the input to the start symbol.
+</para>
+
+<para>
+Using <literal remap="tt">Kanocc::Error</literal> we can rewrite our example to:  
+
+<screen>
+require "rubygems"   
+require "kanocc"
+
+class Number &lt; Kanocc::Token 
+attr_reader :val 
+pattern(/\d+/) { @val = @m[0].to_i} 
+end
+
+
+class Expr &lt; Kanocc::Nonterminal 
+  attr_reader :val 
+
+  rule(Expr, "+", Expr) { @val = @rhs[0].val + @rhs[2].val}
+  rule(Expr, "-", Expr) { @val = @rhs[0].val - @rhs[2].val}
+  rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; prec 1
+  rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val}; prec 1 
+  rule("(", Expr, ")") { @val = @rhs[1].val}
+  rule(Number) {@val = @rhs[0].val}
+end
+
+class Line &lt; Kanocc::Nonterminal
+  rule(Expr, "\n") {puts @rhs[0].val}
+  rule(Kanocc::Error, "\n") {puts "Sorry - didn't understand: " + @rhs[0].str.inspect}
+end
+
+class Program &lt; Kanocc::Nonterminal
+  rule(zm(line)) 
+end
+
+Kanocc::Kanocc.new(Program).parse &#60;&#60;-EOI
+  3 + 4 - 2
+  8 - 2 * 3
+  8 * + 3
+  2 + 3 * 2
+EOI
+</screen>
+
+</para>
+
+<para>
+This should produce:
+</para>
+
+<para>
+
+<screen>
+  5
+  2
+  Sorry - didn't understand: "  8 * + 3" 
+  8
+</screen>
+
+</para>
+
+<para>
+To facillitate error messaging, an instance of <literal remap="tt">Kanocc::Error</literal> will have set two instance
+variables:
+</para>
+
+<para>
+
+<orderedlist>
+<listitem>
+
+<para>
+<literal remap="tt">@program</literal> which refers the input being processed.
+</para>
+</listitem>
+<listitem>
+
+<para>
+<literal remap="tt">@start</literal> which indexes the first character of the part of input that has been
+reduced to this error.
+</para>
+</listitem>
+<listitem>
+
+<para>
+<literal remap="tt">@end</literal> which indexes the first character <emphasis>after</emphasis> the erronous 
+part of input.
+</para>
+</listitem>
+
+</orderedlist>
+
+In our example, <literal remap="tt">@program</literal> would reference the string :
+
+<screen>
+&#60;&#60;-EOT 
+exit 
+EOT
+</screen>
+,
+<literal remap="tt">@start</literal> and <literal remap="tt">@end</literal> would have the values 23 and 34 respectively, so that
+<literal remap="tt"> @program[@start, @end] </literal>
+would give
+
+<screen>
+"  8 * + 3 "
+</screen>
+
+</para>
+
+</chapter>
+
+<chapter>
+<title>Debugging and loggin</title>
+
+<para>
+TODO
+</para>
+
+</chapter>
+
+<chapter>
+<title>Internals of Kanocc</title>
+
+<para>
+TODO
+</para>
+
+</chapter>
+
+</book>

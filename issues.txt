@@ -1,0 +1,6 @@
+Issues: 
+
+Hvordan adgang til streng når fjel?
+
+rule,,,
+

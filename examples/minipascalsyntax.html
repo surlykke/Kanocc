@@ -1,0 +1,371 @@
+<html><head><title>Syntax of Mini-Pascal</title></head>
+<body bgcolor="#FFFFFF">
+<hr>
+<h3>Syntax of Mini-Pascal (Welsh &amp; McKeag, 1980)</h3>
+<hr>
+Syntax in recursive descent order
+<hr>
+<table>
+<tr valign="top">
+<td>&lt;<i>program</i>&gt;  <b><code>::=</code></b>
+<td><b>program</b> &lt;<i>identifier</i>&gt; <b>;</b> &lt;<i>block</i>&gt;  <b>.</b>
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td>&lt;<i>block</i>&gt;  <b><code>::=</code></b>
+<td>
+&lt;<i>variable declaration part</i>&gt; <br>
+&lt;<i>procedure declaration part</i>&gt;  <br>
+&lt;<i>statement part</i>&gt; 
+</td>
+</tr>
+</table><hr>
+<table>
+<tr valign="top">
+<td> &lt;<i>variable declaration part</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>empty</i>&gt; | <br>
+<b>var</b> &lt;<i>variable declaration</i>&gt; <b>;</b> <br>
+&nbsp;&nbsp;&nbsp;&nbsp;{ &lt;<i>variable declaration</i>&gt; <b>;</b> } 
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>variable declaration</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>identifier </i>&gt; { <b>,</b> &lt;<i>identifier</i>&gt; } <b>:</b> &lt;<i>type</i>&gt;
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>type</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>simple type</i>&gt; | &lt;<i>array type</i>&gt; 
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>array type</i>&gt; <b><code>::=</code></b>
+<td> <b>array</b> <b>[</b> &lt;<i>index range</i>&gt;  <b>]</b> <b>of</b> &lt;<i>simple type</i>&gt;
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>index range</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>integer constant</i>&gt; <b>..</b> &lt;<i>integer constant</i>&gt;
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>simple type</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>type identifier</i>&gt; 
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>type identifier</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>identifier</i>&gt; 
+</td>
+</tr>
+</table>
+<hr>
+<table>
+<tr valign="top">
+<td> &lt;<i>procedure declaration part</i>&gt; <b><code>::=</code></b>
+<td>  {  &lt;<i>procedure declaration</i>&gt; <b>;</b> } 
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>procedure declaration</i>&gt; <b><code>::=</code></b>
+<td>  <b>procedure</b> &lt;<i>identifier</i>&gt; <b>;</b> &lt;<i>block</i>&gt;  
+</td>
+</tr>
+</table>
+<hr>
+<table>
+<tr valign="top">
+<td> &lt;<i>statement part</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>compound statement</i>&gt;
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>compound statement</i>&gt; <b><code>::=</code></b>
+<td> <b>begin</b> &lt;<i>statement</i>&gt;{ <b>;</b> &lt;<i>statement</i>&gt; } <b>end</b> 
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>statement</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>simple statement</i>&gt; | &lt;<i>structured statement</i>&gt; 
+</td>
+</tr>
+</table>
+<hr>
+<table>
+<tr valign="top">
+<td> &lt;<i>simple statement</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>assignment statement</i>&gt; | &lt;<i>procedure statement</i>&gt; | <br>
+     &lt;<i>read statement</i>&gt; | &lt;<i>write statement</i>&gt; 
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>assignment statement</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>variable</i>&gt; <b><code>:=</code></b> &lt;<i>expression</i>&gt; 
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>procedure statement</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>procedure identifier</i>&gt; 
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>procedure identifier</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>identifier</i>&gt; 
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>read statement</i>&gt; <b><code>::=</code></b>
+<td> <b>read</b> <b>(</b> &lt;<i>input variable</i>&gt; { <b>,</b> &lt;<i>input variable</i>&gt;  } <b>)</b>
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>input variable</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>variable</i>&gt; </td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>write statement</i>&gt; <b><code>::=</code></b>
+<td> <b>write</b> <b>(</b> &lt;<i>output value</i>&gt; { <b>,</b> &lt;<i>output value</i>&gt;  } <b>)</b>
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>output value</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>expression</i>&gt; </td>
+</tr>
+</table>
+<hr>
+<table>
+<tr valign="top">
+<td> &lt;<i>structured statement</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>compound statement</i>&gt; | &lt;<i>if statement</i>&gt;  | <br>
+     &lt;<i>while statement</i>&gt; 
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>if statement</i>&gt; <b><code>::=</code></b>
+<td> <b>if</b> &lt;<i>expression</i>&gt; <b>then</b> &lt;<i>statement</i>&gt; | <br>
+     <b>if</b> &lt;<i>expression</i>&gt; <b>then</b> &lt;<i>statement</i>&gt; <b>else</b>  &lt;<i>statement</i>&gt;
+</td> 
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>while statement</i>&gt; <b><code>::=</code></b>
+<td> <b>while</b> &lt;<i>expression</i>&gt; <b>do</b> &lt;<i>statement</i>&gt; 
+</td>
+</tr>
+</table>
+<hr>
+<table>
+<tr valign="top">
+<td> &lt;<i>expression</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>simple expression</i>&gt; | <br> 
+     &lt;<i>simple expression</i>&gt; &lt;<i>relational operator</i>&gt; &lt;<i>simple expression</i>&gt;  
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>simple expression</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>sign</i>&gt;  &lt;<i>term</i>&gt; {  &lt;<i>adding operator</i>&gt;  &lt;<i>term</i>&gt; }
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>term</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>factor</i>&gt; {  &lt;<i>multiplying operator</i>&gt;  &lt;<i>factor</i>&gt; }
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>factor</i>&gt; <b><code>::=</code></b>
+<td>  &lt;<i>variable</i>&gt; |  &lt;<i>constant</i>&gt; | <b>(</b> &lt;<i>expression</i>&gt; <b>)</b> | 
+      <b>not</b> &lt;<i>factor</i>&gt; 
+</td>
+</tr>
+</table>
+<hr>
+<table>
+<tr valign="top">
+<td> &lt;<i>relational operator</i>&gt; <b><code>::=</code></b>
+<td> <b>=</b> | <b>&lt;&gt;</b> | <b>&lt;</b> | <b>&lt;=</b> | <b>&gt;=</b> | <b>&gt;</b> 
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>sign</i>&gt; <b><code>::=</code></b>
+<td>  + | <code>-</code> | &lt;<i>empty</i>&gt;   
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>adding operator</i>&gt; <b><code>::=</code></b>
+<td>    + | <code>-</code> | <b>or</b> 
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>multiplying operator</i>&gt; <b><code>::=</code></b>
+<td> <code>*</code> |  <b>div</b> | <b>and</b> 
+</td>
+</tr>
+</table>
+<hr>
+<table>
+<tr valign="top">
+<td> &lt;<i>variable</i>&gt; <b><code>::=</code></b>
+<td>   &lt;<i>entire variable</i>&gt; | &lt;<i>indexed variable</i>&gt; 
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>indexed variable</i>&gt; <b><code>::=</code></b>
+<td>   &lt;<i>array variable</i>&gt; <b>[</b> &lt;<i>expression</i>&gt; <b>]</b>
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>array variable</i>&gt; <b><code>::=</code></b>
+<td>   &lt;<i>entire variable</i>&gt;  
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>entire variable</i>&gt; <b><code>::=</code></b>
+<td>   &lt;<i>variable identifier</i>&gt;  
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>variable identifier</i>&gt; <b><code>::=</code></b>
+<td>   &lt;<i>identifier</i>&gt;  
+</td>
+</tr>
+</table>
+<hr>
+Lexical grammar 
+<hr>
+<table>
+<tr valign="top">
+<td> &lt;<i>constant</i>&gt; <b><code>::=</code></b>
+<td>  &lt;<i>integer constant</i>&gt; | &lt;<i>character constant</i>&gt; |  &lt;<i>constant identifier</i>&gt;   
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>constant identifier</i>&gt; <b><code>::=</code></b>
+<td>  &lt;<i>identifier</i>&gt;   
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>identifier</i>&gt; <b><code>::=</code></b>
+<td>  &lt;<i>letter</i>&gt; { &lt;<i>letter or digit</i>&gt;  }   
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>letter or digit</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>letter</i>&gt; | &lt;<i>digit</i>&gt;
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>integer constant</i>&gt; <b><code>::=</code></b>
+<td> &lt;<i>digit</i>&gt; { &lt;<i>digit</i>&gt; } 
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>character constant</i>&gt; <b><code>::=</code></b>
+<td> <b>'</b>&lt;<i> any character other than </i>' &gt;<b>'</b> &nbsp;|&nbsp; <b>''''</b>
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>letter</i>&gt; <b><code>::=</code></b>
+<td> a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | <br> 
+     p | q | r | s | t | u | v | w | x | y | z | A | B | C | <br>
+     D | E | F | G | H | I | J | K | L | M | N | O | P <br>
+     | Q | R | S | T | W | V | W | X | Y | Z  
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>digit</i>&gt; <b><code>::=</code></b>
+<td> 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>special symbol</i>&gt; <b><code>::=</code></b>
+<td> + | - | * | = | &lt;&gt; | &lt; | &gt; | &lt;= | &gt;= | <br>
+( | ) | [  | ] | <b><code>:=</code></b> | . | , | ; | : | ..  | <b>div</b> | <b>or</b> | <br>
+<b>and</b> | <b>not</b> | <b>if</b> | <b>then</b> | <b>else</b> | <b>of</b> | <b>while</b> | <b>do</b> | <br>
+<b>begin</b> | <b>end</b> | <b>read</b> | <b>write</b> | <b>var</b> | <b>array</b> | <br>
+<b>procedure</b> | <b>program</b>   
+</td>
+</tr>
+</table>
+<table>
+<tr valign="top">
+<td> &lt;<i>predefined identifier</i>&gt; <b><code>::=</code></b>
+<td> integer | Boolean | true | false
+</td>
+</tr>
+</table>
+<hr>
+</body>
+</html>
