@@ -19,35 +19,26 @@ require 'rubygems'
 require 'ruby-debug'
 module Kanocc
   class GrammarRule
-    attr_reader :lhs, :rhs, :method, :operator_prec
-    attr_accessor :prec 
+    attr_reader :lhs, :rhs, :method
+    attr_accessor :precedence
 
     def initialize(lhs, rhs, method)
       @lhs = lhs
       @rhs = rhs
       @method = method
-      @logger.debug("#{lhs} --> #{rhs.map {|gs| gs.is_a?(Symbol) ? gs.to_s : gs}.join}, #prec = #{@prec}, method = #{method}") unless not @logger
-    end
-  
-    def prec
-      if @prec
-        return @prec
+      @prededence = 0
+      @logger.debug("#{lhs} --> #{rhs.map {|gs| gs.is_a?(Symbol) ? gs.to_s : gs}.join}, #prec = #{@prec}, method = #{method}") if @logger
+    end  
+   
+    def rightmost_operator
+      tokens = rhs.find_all{|gs| gs.is_a?(String) or gs.is_a?(Token)}
+      if (tokens.size > 0)
+	tokens[tokens.size - 1]
       else
-        unless @operator_prec_calculated
-	  operator = rhs.find {|s| s.is_a?(String) or s.is_a?(Token)}  
-          if operator
-            @operator_prec = lhs.operator_precedence(operator)
-          end
-          @operator_prec_calculated = true
-        end
-        if @operator_prec
-          return @operator_prec
-	else
-          return 0
-	end
+	nil
       end
     end
-    
+
     def inspect 
       return lhs.inspect + " ::= " + rhs.map{|gs| gs.inspect}.join(" ")
     end

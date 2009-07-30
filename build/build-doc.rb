@@ -1,10 +1,11 @@
-#!/usr/bin/env ruby 
-# You must have the tool docbook2html in path before you execute this script.
-# I don't know if it will work on windows.
-#
-# TODO: Build rdoc stuff
-#
-rootdir = File.expand_path(File.join(File.dirname(__FILE__), ".."))
-source = File.join(rootdir, "docs", "Kanocc.xml")
-destdir = File.join(rootdir, "www")
-system("docbook2html -u -o #{destdir}  #{source}")
+#!/usr/bin/ruby -w
+require 'xml/libxslt'
+this_dir = File.dirname(__FILE__)
+xslt = XML::XSLT.new()
+path_to_docbook_stylesheets = 
+xslt.xml = this_dir + "/../docs/Kanocc.xml" 
+xslt.xsl = "/usr/share/xml/docbook/stylesheet/nwalsh/html/docbook.xsl"
+path_to_output = this_dir + "/../www/Kanocc.html" 
+File.open(path_to_output, "w") do |f|
+	f.print(xslt.serve())
+end

@@ -27,10 +27,15 @@
 
 <legalnotice>
 <para>
-This work is licensed under the Creative Commons Attribution-Share Alike 3.0 Unported License. 
+This document is licensed under the Creative Commons Attribution-Share Alike 3.0 Unported License. 
 To view a copy of this license, visit 
-<ulink url="http://creativecommons.org/licenses/by-sa/3.0/">&#65533;</ulink> or send 
+<ulink url="http://creativecommons.org/licenses/by-sa/3.0/"/> or send 
 a letter to Creative Commons, 171 Second Street, Suite 300, San Francisco, California, 94105, USA.
+</para>
+
+<para>
+The software that makes up Kanocc is licensed under GPL v3. See the README file that comes with kanocc or the 
+individual sourcefiles that make up Kanocc.
 </para>
 </legalnotice>
 
@@ -157,7 +162,7 @@ In A's initializer...
 <title>Getting and installing Kanocc</title>
 
 <para>
-Kanocc is availabl as a gem from RubyForge. From the command-prompt, do:
+Kanocc is available as a gem from RubyForge. From the command-prompt, do:
 <screen>
 gem install kanocc
 </screen>
@@ -428,11 +433,8 @@ If you're <emphasis>very</emphasis> observant, you'll have noticed that the lite
 we used in our example above is also whitespace. This is ok. Kanocc will always try first to form 
 tokens from input. If that's not possible it will try to discard some of it as whitespace. If
 that isn't possible either, Kanocc will form a literal token from the first character of the remaining input
-</para>
-
-<para>
-This scheme has the nice quality that lexical scanning (the process of transforming input to a 
-stream of tokens) never fails.
+<footnote><para>This scheme has the nice quality that lexical scanning (the process of transforming input to a 
+stream of tokens) never fails.</para></footnote>
 </para>
 
 </sect1>
@@ -635,9 +637,14 @@ This can be done in two ways:
            /  | \
           /   |  \
         Expr '-'  Expr
-                 /  | \
-                /   |  \
-             Expr  '*'  Expr
+        /        /  | \
+       /        /   |  \
+   Number    Expr  '*'  Expr
+     |        |          |
+    '8'       |          |
+            Number     Number
+              |          |
+	     '2'        '3'
 </screen>
 or
 <screen>
@@ -645,17 +652,29 @@ or
            /  | \
           /   |  \
         Expr '*'  Expr
-       /  | \
-      /   |  \
-   Expr  '-'  Expr
-
+       /  | \        \
+      /   |  \        \
+   Expr  '-'  Expr   Number
+    |          |       |
+    |          |      '3'
+  Number     Number
+    |          |
+   '8'        '2' 
 </screen>
 
 Clearly, what we want is the first variant, so we need to make Kanocc choose the
-operator <literal>'-'</literal> <emphasis>before</emphasis> <literal>'*'</literal>. 
-Therefore we must 
-give <literal>'-'</literal> a <emphasis>higher</emphasis> precedence 
+expansion 
+<screen>
+  Expr --> Expr '-' Expr
+</screen>
+<emphasis>before</emphasis> 
+<screen>
+  Expr --> Expr '*' Expr
+</screen> 
+
+Therefore we must give <literal>'-'</literal> a <emphasis>higher</emphasis> precedence 
 than <literal>'*'</literal>.
+
 </para>
 
 </sect3>
@@ -674,7 +693,7 @@ Kanocc::Nonterminal.oPrec
 to assign precedence to an operator in your grammar. For example: 
 
 <screen>
-oPrec('*', -).
+oPrec('*', -1).
 </screen>
 
 </para>
@@ -700,17 +719,20 @@ end.
 
 <para>
 When you define operator precedence like this, Kanocc will apply it to those rules that have the operator as it's
-first terminal on the righthand-side. (I think this is how Yacc/Bison works.)
+first terminal on the righthand-side. <footnote><para>I think this is how Yacc/Bison works.</para></footnote>
 </para>
 
 <para>
 The method  <literal remap="tt">Kanocc.oPrec</literal> takes a variable number of arguments. If you give it 
-<literal remap="tt">N</literal> arguments, the first <literal remap="tt">N-1</literal> of them must be terminals and the last must be a number.
+<literal remap="tt">N</literal> arguments, the first <literal remap="tt">N-1</literal> of them must be terminals 
+and the last must be a number.
 </para>
 
 <para>
-When you call <literal remap="tt">Kanocc::Nonterminal.oPrec</literal> like this, it will have effect when Kanocc is considering two
-rules belonging to the nonterminal where you made the call - in this example <literal remap="tt">Expr</literal>.
+When you call <literal remap="tt">Kanocc::Nonterminal.oPrec</literal> like this,
+it will have effect when Kanocc is considering two
+rules belonging to the nonterminal where you made the call - in this example 
+<literal remap="tt">Expr</literal>.
 </para>
 
 <para>

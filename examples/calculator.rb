@@ -61,7 +61,7 @@ class Expr < Kanocc::Nonterminal
   rule("(", Expr, ")")   {@val = @rhs[1].val}
   rule(Number)           {@val = @rhs[0].val}
   
-  set_operator_precedence ['*', '/'], 2
+  precedence '*', '/', -2
 end
 
 class Line < Kanocc::Nonterminal
@@ -73,18 +73,18 @@ class Line < Kanocc::Nonterminal
 end
 
 class Program < Kanocc::Nonterminal
-  rule(Program, Line)
-  rule()
+  rule(zm(Line))
 end
 
 # Make a parser, give it 'Program' as the grammars startsymbol
 
 parser = Kanocc::Kanocc.new(Program)
-parser.logger.level = Logger::INFO
+
+#parser.logger.level = Logger::INFO
 
 # Feed it some input
 $source = <<-EOF
-  2 * 3
+  2 + 3
   3 - 3 +
   7 - 2 - 1
   3 * 2 + 4

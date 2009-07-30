@@ -1,4 +1,4 @@
-#  
+#
 #  Copyright 2008 Christian Surlykke
 #
 #  This file is part of Kanocc.
@@ -16,50 +16,18 @@
 #  version 3 along with Kanocc.  If not, see <http://www.gnu.org/licenses/>.
 #
 require 'kanocc/grammar_rule'
+require 'ruby-debug'
 module Kanocc
   class Nonterminal
     @@rules = Hash.new
     @@last_rule = Hash.new
-    @@derives_right = Hash.new
     @@operator_precedence = Hash.new
+    @@bind_right = Hash.new
     @@method_names = Hash.new
     
     Left = 1
     Right = 2
         
-    def Nonterminal.derives_right
-      @@derives_right[self] = true
-    end
-    
-    def Nonterminal.derives_right?
-      return @@derives_right[self]
-    end
-   
-    def Nonterminal.set_operator_precedence(operator, precedence) 
-      raise "Precedence must be an integer" unless precedence.class == Fixnum
-      @@operator_precedence[self] ||= Hash.new 
-      if is_an_operator?(operator)
-        @@operator_precedence[self][operator] = precedence
-      elsif is_an_array_of_operators(operator)
-        operator.each {|o| @@operator_precedence[self][o] = precedence}
-      else
-        raise "Operator must be a string, a token or an array of those"  
-      end 
-    end
- 
-    def Nonterminal.operator_precedence(operator)
-      (@@operator_precedence[self] and @@operator_precedence[self][operator]) or 0
-    end
-
-    def Nonterminal.is_an_array_of_operators(arr) 
-       arr.is_a?(Array) and
-       arr.collect{|o| is_an_operator?(o)}.inject {|b1, b2| b1 and b2 }
-    end
-    
-    def Nonterminal.is_an_operator?(operator)
-        operator.is_a?(String) or operator.is_a?(Token) 
-    end
-
     def Nonterminal.rules
       rules = @@rules[self] 
       return rules ? rules : []
@@ -140,10 +108,49 @@ module Kanocc
       return method_name
     end
   
-    def Nonterminal.prec(p) 
-      raise "Call to prec not preceded by rule" unless @@last_rule[self]
-      @@last_rule[self].prec = p
+    def Nonterminal.precedence(*args) 
+      if args.length == 0
+        raise "No arguments to precedence"
+      elsif args.length == 1 
+        raise "Call to precedence not preceded by rule" unless @@last_rule[self]
+        @@last_rule[self].precedence = args[0]
+      else
+        operators = args.slice(0, args.length - 1)
+	prec = args[args.length - 1] 
+        unless prec.class == Fixnum
+	  raise "The last argument to precedence must be an integer"  
+        end
+	@@operator_precedence[self] = Hash.new unless @@operator_precedence[self] 
+        operators.each do |operator|
+	  unless operator.is_a?(String) or operator.is_a?(Token)
+	    raise "#{operator.inspect} not a string or a token"
+          end
+	  @@operator_precedence[self][operator] = prec
+        end
+      end
     end
+   
+    def Nonterminal.operator_precedence(operator)
+      if @@operator_precedence[self] and @@operator_precedence[self][operator]
+        return @@operator_precedence[self][operator] 
+      else
+	return 0
+      end
+    end
+    
+    def Nonterminal.bind_right(*operators)
+      operators.each do |operator|
+        @@bind_right[self] = Hash.new unless @@bind_right[self]
+	unless operator.is_a?(String) or operator.is_a?(Token)
+	  raise "#{operator.inspect} not a string or a token" 
+	end
+        @@bind_right[self][operator] = true
+      end 
+    end
+   
+    def Nonterminal.bind_right?(operator) 
+      return @@bind_right[self] && @@bind_right[self][operator]
+    end    
     
     def Nonterminal.show_method_names
       @@method_names[self].each{|mn| puts mn.inspect} if @@method_names[self]
@@ -196,7 +203,10 @@ module Kanocc
 
   class Error < Nonterminal
     def str 
-      "hey"
+      "hey" # FIXME
     end
+  end
+
+  class StartSymbol < Nonterminal
   end
 end

@@ -46,7 +46,7 @@ require 'logger'
 #
 #    NUM a sequence of digits
 #
-# In Kanocc yout could do it like this:
+# In Kanocc you could do it like this:
 #
 #    require "kanocc"
 #    
@@ -118,7 +118,8 @@ module Kanocc
       raise "Start symbol not defined" unless @start_symbol
       @parser.start_symbol = @start_symbol 
       @stack = []
-      @parser.parse(@input) 
+      @parser.parse(@input)
+      @logger.info("Stack: " + @stack.inspect)
       @stack[0][0]
     end
    

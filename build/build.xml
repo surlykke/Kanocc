@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<project basedir="." default="generate.html" name="Kanocc.doc">
+
+  <!--================================================================================================
+             Generating Kanocc documentation as html 
+      ================================================================================================ -->
+
+  <target name="create.html">
+		<xslt basedir="${basedir}"
+			    destdir="${basedir}/../www"
+          style="${xsl.html.dir}/docbook.xsl"
+					extension=".html"
+          includes="${basedir}/../doc/Kanocc.xml" />
+	</target>
+
+	<!--================================================================================================
+		         Generating Kanocc documentation as pdf
+      ================================================================================================  -->
+	<target name="create.fo">
+		<mkdir dir="${basedir}/tmp" />
+		<xslt basedir="${basedir}/../doc" 
+			    destdir="${basedir}/../www" 
+					style="${xsl.fo.dir}/docbook.xsl" 
+					extension=".fo" 
+				  includes="${basedir}/../doc/Kanocc.xml" />
+	</target>
+	
+	
+	<target name="prepare.fop" depends="create.settings.xml">
+
+		<artifact:dependencies pathId="fop.ant.path" settingsfile="settings.xml" >
+			<artifact:pom file="poms/fop-ant.pom" />
+		</artifact:dependencies>
+
+		<taskdef name="fop" classname="org.apache.fop.tools.anttasks.Fop" classpathref="fop.ant.path"/>
+	</target>
+
+	<target name="generate.pdf" depends="prepare.fop, transform-xml">
+		<fop basedir="${basedir}" 
+			userconfig="${basedir}/fop.cfg.xml" 
+			outdir="${basedir}/../www">
+			<fileset dir="${basedir}/tmp">
+				<include name="*.fo" />
+			</fileset>
+		</fop>
+	</target> -->
+
+</project>
