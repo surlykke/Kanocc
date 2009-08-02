@@ -21,7 +21,6 @@ module Kanocc
   class Nonterminal
     @@rules = Hash.new
     @@last_rule = Hash.new
-    @@operator_precedence = Hash.new
     @@bind_right = Hash.new
     @@method_names = Hash.new
     
@@ -107,50 +106,17 @@ module Kanocc
       @@method_names[self].push(method_name)
       return method_name
     end
-  
-    def Nonterminal.precedence(*args) 
-      if args.length == 0
-        raise "No arguments to precedence"
-      elsif args.length == 1 
-        raise "Call to precedence not preceded by rule" unless @@last_rule[self]
-        @@last_rule[self].precedence = args[0]
-      else
-        operators = args.slice(0, args.length - 1)
-	prec = args[args.length - 1] 
-        unless prec.class == Fixnum
-	  raise "The last argument to precedence must be an integer"  
-        end
-	@@operator_precedence[self] = Hash.new unless @@operator_precedence[self] 
-        operators.each do |operator|
-	  unless operator.is_a?(String) or operator.is_a?(Token)
-	    raise "#{operator.inspect} not a string or a token"
-          end
-	  @@operator_precedence[self][operator] = prec
-        end
-      end
+
+    def Nonterminal.precedence(prec)
+      raise "Given rule precedence was not a Numeric" unless prec.is_a? Numeric
+      raise "Call to precedence must be preceded by a rule" unless @@last_rule[self]
+      @@last_rule[self].precedence = prec
     end
-   
-    def Nonterminal.operator_precedence(operator)
-      if @@operator_precedence[self] and @@operator_precedence[self][operator]
-        return @@operator_precedence[self][operator] 
-      else
-	return 0
-      end
+
+    def Nonterminal.derives_right
+      raise "Call to derives_right must be preceded by a rule" unless @@last_rule[self]
+      @@last_rule[self].derives_right = true
     end
-    
-    def Nonterminal.bind_right(*operators)
-      operators.each do |operator|
-        @@bind_right[self] = Hash.new unless @@bind_right[self]
-	unless operator.is_a?(String) or operator.is_a?(Token)
-	  raise "#{operator.inspect} not a string or a token" 
-	end
-        @@bind_right[self][operator] = true
-      end 
-    end
-   
-    def Nonterminal.bind_right?(operator) 
-      return @@bind_right[self] && @@bind_right[self][operator]
-    end    
     
     def Nonterminal.show_method_names
       @@method_names[self].each{|mn| puts mn.inspect} if @@method_names[self]

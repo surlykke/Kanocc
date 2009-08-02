@@ -20,7 +20,7 @@ require 'ruby-debug'
 module Kanocc
   class GrammarRule
     attr_reader :lhs, :rhs, :method
-    attr_accessor :precedence
+    attr_accessor :precedence, :derives_right
 
     def initialize(lhs, rhs, method)
       @lhs = lhs
@@ -30,18 +30,8 @@ module Kanocc
       @logger.debug("#{lhs} --> #{rhs.map {|gs| gs.is_a?(Symbol) ? gs.to_s : gs}.join}, #prec = #{@prec}, method = #{method}") if @logger
     end  
    
-    def rightmost_operator
-      tokens = rhs.find_all{|gs| gs.is_a?(String) or gs.is_a?(Token)}
-      if (tokens.size > 0)
-	tokens[tokens.size - 1]
-      else
-	nil
-      end
-    end
-
     def inspect 
       return lhs.inspect + " ::= " + rhs.map{|gs| gs.inspect}.join(" ")
     end
-
   end
 end  

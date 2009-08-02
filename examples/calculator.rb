@@ -56,18 +56,19 @@ class Expr < Kanocc::Nonterminal
   
   rule(Expr, "+", Expr)  {@val = @rhs[0].val + @rhs[2].val}
   rule(Expr, "-", Expr)  {@val = @rhs[0].val - @rhs[2].val}
-  rule(Expr, "*", Expr)  {@val = @rhs[0].val * @rhs[2].val}
-  rule(Expr, "/", Expr)  {@val = @rhs[0].val / @rhs[2].val}
+  rule(Expr, "*", Expr)  {@val = @rhs[0].val * @rhs[2].val}; precedence -1
+  rule(Expr, "/", Expr)  {@val = @rhs[0].val / @rhs[2].val}; precedence -1
   rule("(", Expr, ")")   {@val = @rhs[1].val}
   rule(Number)           {@val = @rhs[0].val}
-  
-  precedence '*', '/', -2
 end
 
 class Line < Kanocc::Nonterminal
-  rule(Expr, "\n")   { p @rhs[0].val}
+  rule(Expr, "\n")   do
+    str = $source[@rhs.start_pos..@rhs.end_pos - 2]
+    puts str + " gives: " + @rhs[0].val.to_s
+  end
   rule(Kanocc::Error, "\n") do 
-    error_string = $source[@rhs.start_pos, @rhs.end_pos - @rhs.start_pos] 
+    error_string = $source[@rhs.start_pos..@rhs.end_pos]
     puts "Sorry - didn't understand: #{error_string.inspect}"
   end
 end
@@ -85,7 +86,7 @@ parser = Kanocc::Kanocc.new(Program)
 # Feed it some input
 $source = <<-EOF
   2 + 3
-  3 - 3 +
+  3 + 2 +
   7 - 2 - 1
   3 * 2 + 4
   4 + 3 * 3

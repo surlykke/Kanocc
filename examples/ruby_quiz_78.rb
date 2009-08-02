@@ -44,21 +44,21 @@ class Package < Kanocc::Nonterminal
   rule('{', PackageList , '}') { @val = "{#{@rhs[1].val}}"} 
   rule('[', PackageList , ']') { @val = "[#{@rhs[1].val}]"} 
   # Some error-correcting rules 
-  rule(PackageList, ')') {@val = "(#{@rhs[0].val})"}; prec -2
-  rule('(', PackageList) {@val = "(#{@rhs[1].val})"}; prec -2
-  rule(PackageList, '}') {@val = "{#{@rhs[0].val}}"}; prec -2
-  rule('{', PackageList) {@val = "{#{@rhs[1].val}}"}; prec -2
-  rule(PackageList, ']') {@val = "[#{@rhs[0].val}]"}; prec -2
-  rule('[', PackageList) {@val = "[#{@rhs[1].val}]"}; prec -2
+  rule(PackageList, ')') {@val = "(#{@rhs[0].val})"}; precedence -2
+  rule('(', PackageList) {@val = "(#{@rhs[1].val})"}; precedence -2
+  rule(PackageList, '}') {@val = "{#{@rhs[0].val}}"}; precedence -2
+  rule('{', PackageList) {@val = "{#{@rhs[1].val}}"}; precedence -2
+  rule(PackageList, ']') {@val = "[#{@rhs[0].val}]"}; precedence -2
+  rule('[', PackageList) {@val = "[#{@rhs[1].val}]"}; precedence -2
 end
 
-class PackageList 
+class PackageList < Kanocc::Nonterminal
   attr_reader :val
   rule(om(Package)){ @val = @rhs[0].elements.map{|p| p.val}.join("") }
 end
 
 # Set up a parser 
-packageChecker = Kanocc::Kanocc.new(Package)
+packageChecker = Kanocc::Kanocc.new(PackageList)
 
 # And go
 puts "[(B)] .............becomes........ " + packageChecker.parse('[(B)]').val

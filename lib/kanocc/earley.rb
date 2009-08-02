@@ -193,6 +193,7 @@ module Kanocc
     end
       
     def reduce
+      "Reducing"
       item = @items.items_at_n(@inputPos).find do |item|
 	@start_symbol == item.rule.lhs and item.dot == 1
       end
@@ -209,9 +210,8 @@ module Kanocc
       return if item.dot <= 0
 
       prev_item = @items.find(item.rule, item.dot - 1, item.j, prev_pos)
-      bind_right = prev_item.dot > 1 and prev_item.rule.lhs.bind_right?(prev_item.rule.rhs[prev_item.dot - 2])
-      prev_prev_pos = bind_right ? prev_item.prev_pos_min : prev_item.prev_pos_max
-
+      prev_prev_pos = prev_item.prev_pos_min
+      
       if is_nonterminal?(item.symbol_before_dot)
         subitem, sub_prev_pos = pick_subitem(item.symbol_before_dot, pos, prev_pos)
         make_parse(prev_item, prev_pos, prev_prev_pos)
@@ -228,18 +228,16 @@ module Kanocc
       items = @items.full_items_by_nonterminal_j_n(nonterminal, prev_pos, pos)
 
       raise "pick_subitem could not find any items" if items.size <= 0
-      puts "pick_subitem considering: " + items.inspect
       items = find_highest(items) {|item| precedence(item)}
-      items = find_highest(items) {|item| puts "consider #{item.inspect}, operator_precedence = #{operator_precedence(item)}"; operator_precedence(item)}
 
-      bind_right = everything_binds_right(items)
-      if bind_right
-        items = find_highest(items) {|item| -item.prev_pos_min}
+      derives_right = all_derives_right(items)
+      if derives_right
+	items = find_highest(items) {|item| -item.prev_pos_min}
       else
         items = find_highest(items){|item| item.prev_pos_max}
       end
 
-      return items[0], bind_right ? items[0].prev_pos_min : items[0].prev_pos_max
+      return items[0], derives_right ? items[0].prev_pos_min : items[0].prev_pos_max
     end
 
     def find_highest(items, &expr)
@@ -261,19 +259,9 @@ module Kanocc
       item.rule.precedence || 0
     end
       
-    def operator_precedence(item)
-      if op = item.rule.rightmost_operator
-        item.rule.lhs.operator_precedence(op) || 0
-      else
-        0
-      end
-    end
-      
-    def everything_binds_right(items)
+    def all_derives_right(items)
       items.each do |item|
-        unless item.dot > 1 and item.rule.lhs.bind_right?(item.rule.rhs[item.dot - 2])
-	     return false
-	end
+        return false unless item.rule.derives_right
       end
       return true
     end

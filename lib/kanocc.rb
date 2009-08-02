@@ -87,7 +87,7 @@ module Kanocc
     # grammarsymbols
     # 
     def initialize(start_symbol)
-      @start_symbol = start_symbol 
+      @start_symbol = start_symbol
       @logger = Logger.new(STDOUT)
       @logger.datetime_format = "" 
       @logger.level = Logger::WARN 
@@ -221,8 +221,7 @@ module Kanocc
         end
       end
     end
-       
-    
+
     # For debugging
     def show_stack
       @logger.info("Stack: #{@stack.inspect}") if @logger

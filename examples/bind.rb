@@ -11,16 +11,16 @@ end
 
 class Expr < Kanocc::Nonterminal
   attr_reader :val
-  rule(Expr, "-", Expr) {@val = @rhs[0].val - @rhs[2].val}
-  rule(Expr, "+", Expr) {@val = @rhs[0].val + @rhs[2].val}
+  rule(Expr, "-", Expr) {@val = @rhs[0].val - @rhs[2].val}; 
+  rule(Expr, "+", Expr) {@val = @rhs[0].val + @rhs[2].val}; 
   rule(Number) {@val = @rhs[0].val}
-  bind_right("-")
 end
 
 # Make a parser, give it 'Program' as the grammars startsymbol
 
 parser = Kanocc::Kanocc.new(Expr)
-parser.logger.level = Logger::INFO
+#parser.logger.level = Logger::INFO
 
 puts parser.parse("7 - 5 + 3").val
+puts parser.parse("7 - 3 - 2").val
 
