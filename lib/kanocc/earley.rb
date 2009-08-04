@@ -41,17 +41,11 @@ module Kanocc
     
     ErrorRule = GrammarRule.new(Error, [], nil)
     
-    def initialize(kanocc, options = {})
+    def initialize(kanocc, logger)
       @kanocc = kanocc
-      @scanner = Scanner.new
-      self.logger = options[:logger] || Logger.new
+      @logger = logger
     end
     
-    def logger=(logger)
-      @logger = logger
-      @scanner.logger = @logger
-    end
-
     def start_symbol=(start_symbol)   
       @start_symbol = Class.new(StartSymbol) do
         def self.to_s
@@ -59,11 +53,39 @@ module Kanocc
         end
         rule(start_symbol)
       end 
-      @scanner.set_recognized(*(@kanocc.find_tokens(@start_symbol)))
     end
     
-    def set_whitespace(*ws)
-      @scanner.set_whitespace(*ws)
+
+    def parse(scanner)
+      prepare
+      
+      while (scanner.next_match!) do
+        @inputPos += 1
+	@input_symbols.push(scanner.current_match)
+        @items.prepare_for_n(@inputPos)
+        # scan, predict and complete until no more can be added
+
+        # Scan: At position n, for each terminal a in current match, and each item
+	# of form [A -> x*ay, i, n-1], add [A -> xa*y, i, n]
+        scanner.current_match.terminals.each do |terminal|
+          @items.items_n_and_symbol_after_dot(@inputPos -1, terminal).each do |item|
+            @items.add(item.rule, item.dot + 1, item.j, @inputPos,  @inputPos - 1)
+          end
+        end
+
+	predict_and_complete(@inputPos)
+
+	if @logger
+	  @logger.info("\nItems at #{@inputPos}:\n" +
+	               @input_symbols[@inputPos].inspect + "\n" +
+	               @items.items_at_n(@inputPos).map{|item| " " + item.inspect}.join("\n") + "\n")
+	end
+
+	handle_error if @items.number_at_n(@inputPos) == 0
+      end
+
+      reduce
+
     end
     
     def prepare
@@ -81,49 +103,15 @@ module Kanocc
       end
     end
 
-    def parse(input)
-      @scanner.input = input 
-      prepare
-      
-      while (@scanner.next_match!) do
-        @inputPos += 1
-	@input_symbols.push(@scanner.current_match)
-        
-        # scan, predict and complete until no more can be added
-	consume_token
-        predict_and_complete(@inputPos)
-        if @logger
-	  @logger.info("\nItems at #{@inputPos}:\n" +
-	               @input_symbols[@inputPos][:string].inspect + "\n" +
-	               @items.items_at_n(@inputPos).map{|item| " " + item.inspect}.join("\n") + "\n")
-	end
-        handle_error if @items.number_at_n(@inputPos) == 0
-      end
-      reduce
-    end
-    
-
     # Consume: Given n'th inputsymbol x, for each item of form
     # [A -> a*xb, j, n-1] add item [A -> ax*b, j, n]
     def consume_token
-      @scanner.current_match[:matches].each do |match| 
-        if match[:token] 
-          symbol = match[:token]
-        else
-          symbol = match[:literal]
-        end
-	@items.items_at_n(@inputPos -1).each do |item|
-          if symbol === item.symbol_after_dot or symbol == item.symbol_after_dot  
-            @items.add(item.rule, item.dot + 1, item.j, @inputPos,  @inputPos - 1)
-          end
-        end
-      end
     end
 
     # Predict: For any item of form [A -> a*Bb, j, n] and for all rules of form
     # B -> c, add [B -> *c, n, n].
     #
-    # Complete: Given an item of form [A->X*, j, n], find items of form
+    # Complete: Given an item of form [A->X*, j, n], find all items of form
     # [B -> a*Ab, i, j], and add [B -> aA*b, i, n].
     #
     # Predict and complete until nothing further can be added.
@@ -135,7 +123,7 @@ module Kanocc
 	@items.items_at_n(pos).each do |item|
 	  if item.dot >= item.rule.rhs.length
 	    # complete
-	    @items.find_by_symbol_after_dot_and_n(item.rule.lhs, item.j).each do |previtem|
+	    @items.items_n_and_symbol_after_dot(item.j, item.rule.lhs).each do |previtem|
 	      @items.add(previtem.rule, previtem.dot + 1, previtem.j, pos, item.j)
 	    end
 	  elsif item.rule.rhs[item.dot].respond_to?(:rules)
@@ -163,7 +151,7 @@ module Kanocc
 
     def find_error_items
       for n in (@inputPos - 1).downto(0) do
-        if @items.find_by_symbol_after_dot_and_n(Error, n).size > 0
+        if @items.items_n_and_symbol_after_dot(n, Error).size > 0
 	  return n
 	end
       end
@@ -193,7 +181,6 @@ module Kanocc
     end
       
     def reduce
-      "Reducing"
       item = @items.items_at_n(@inputPos).find do |item|
 	@start_symbol == item.rule.lhs and item.dot == 1
       end
@@ -204,13 +191,15 @@ module Kanocc
         raise(KanoccException, "It didn't parse")
       end
     end
-      
-    def make_parse(item, pos, prev_pos)
 
+    # FIXME Generates stack overflow when files are large.
+    #  15000-2000 inputsymbols with the calculator syntax.
+    # Should be rewritten to something non-recursive
+    def make_parse(item, pos, prev_pos)
       return if item.dot <= 0
 
       prev_item = @items.find(item.rule, item.dot - 1, item.j, prev_pos)
-      prev_prev_pos = prev_item.prev_pos_min
+      prev_prev_pos = prev_item.rule.derives_right ? prev_item.prev_pos_min : prev_item.prev_pos_max
       
       if is_nonterminal?(item.symbol_before_dot)
         subitem, sub_prev_pos = pick_subitem(item.symbol_before_dot, pos, prev_pos)
@@ -219,13 +208,14 @@ module Kanocc
         @kanocc.report_reduction(subitem.rule)
       else
         make_parse(prev_item, prev_pos, prev_prev_pos)
-        @kanocc.report_token(@input_symbols[pos], item.symbol_before_dot)
+	symbol = item.symbol_before_dot
+        @kanocc.report_token(@input_symbols[pos], symbol)
       end
     end
 
     def pick_subitem(nonterminal, pos, prev_pos)
       #debugger
-      items = @items.full_items_by_nonterminal_j_n(nonterminal, prev_pos, pos)
+      items = @items.full_items_by_lhs_j_and_n(nonterminal, prev_pos, pos)
 
       raise "pick_subitem could not find any items" if items.size <= 0
       items = find_highest(items) {|item| precedence(item)}
@@ -303,7 +293,7 @@ module Kanocc
     def inspect
       return "[" + 
       @rule.lhs.inspect + " --> " + 
-       (@rule.rhs.slice(0, dot) + [Dot.new] +
+       (@rule.rhs.slice(0, dot) + [Dot.instance] +
       @rule.rhs.slice(dot, @rule.rhs.length - dot)).map{|symbol| symbol.inspect}.join(" ") + 
             " ; " + @j.inspect + ", " + @n.inspect + "]"
     end
@@ -312,64 +302,73 @@ module Kanocc
 
   class ItemSet
     # FIXME Optimize all this
+
     def initialize
-      @items = []
+      @item_lists = []
+      @items_n_and_symbol_after_dot = {}
+      @items_rule_dot_j_n = {}
+    end
+
+    def prepare_for_n(n)
+      @item_lists[n] = []
     end
 
     def add(rule, dot, j, n, prev_pos)
-      if item = find(rule, dot, j, n)
+      if item = @items_rule_dot_j_n[[rule,dot,j,n]]
 	item.set_prev_pos(prev_pos)
       else
-	@items.push(Item.new(rule, dot, j, n, prev_pos, prev_pos))
+	item = Item.new(rule, dot, j, n, prev_pos, prev_pos)
+	@items_rule_dot_j_n[[rule,dot,j,n]] = item
+	@item_lists[item.n] = [] unless @item_lists[item.n]
+	@item_lists[item.n] << item
+
+	if item.symbol_after_dot
+	  unless @items_n_and_symbol_after_dot[[item.n, item.symbol_after_dot]]
+	    @items_n_and_symbol_after_dot[[item.n, item.symbol_after_dot]] = []
+	  end
+	  @items_n_and_symbol_after_dot[[item.n, item.symbol_after_dot]] << item
+	end
       end
     end
 
     def find(rule, dot, j, n)
-      # There should never be more than one item with these params.
-      @items.find {|item| item.rule == rule and item.dot == dot and item.j == j and item.n == n}
+      @items_rule_dot_j_n[[rule, dot, j,n]]
     end
 
     def find_all_by_n(n)
-      @items.find_all {|item| item.n == n}
+      @item_lists[n].clone
     end
 
     def number_at_n(n)
-      @items.inject(0) {|sum, item| item.n == n ? sum + 1 : sum}
+      @item_lists[n].length
     end
 
-    def find_by_symbol_after_dot_and_n(nonterminal, n)
-      @items.find_all do |item|
-	item.n == n and
-	( nonterminal == item.symbol_after_dot or
-	  nonterminal === item.symbol_after_dot)
-      end
+    def items_n_and_symbol_after_dot(n, symbol)
+      return @items_n_and_symbol_after_dot[[n, symbol]] || []
     end
 
-    def full_items_by_nonterminal_j_n(nonterminal, j, n)
-      @items.find_all do |item|
-	item.n == n and
+    def full_items_by_lhs_j_and_n(lhs, j, n)
+      @item_lists[n].find_all do |item|
+	item.dot >= item.rule.rhs.size and
 	item.j == j and
-	(item.rule.lhs == nonterminal or item.rule.lhs === nonterminal) and
-	item.dot >= item.rule.rhs.size
-      end
-    end
-
-    def find_by_lhs_and_n(lhs, n)
-      @items.find_all do |item|
-	item.rule.lhs == lhs and item.n == n
+	item.rule.lhs == lhs
       end
     end
 
     def items_at_n(n)
-      @items.find_all {|item| item.n == n}
+      return @item_lists[n].clone
     end
 
   end
 
   # Just for Item inspect
   class Dot
+    def Dot.instance
+      @@instance
+    end
     def inspect
       return "·"
     end
+    @@instance = Dot.new
   end
 end

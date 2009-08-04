@@ -43,12 +43,36 @@ module Kanocc
       return @@patterns[self] || []
     end
 
+    def Token.regexps
+      return (@@patterns[self] || []).map {|pattern| pattern[:regexp]}
+    end
+
+    def Token.method(regexp)
+      patterns.find {|pattern| pattern[:regexp] == regexp}[:method_name]
+    end
+
     def is_a_kanocc_token?
       return true
     end
 
     def Token.is_a_kanocc_grammarsymbol?
       return true
+    end
+
+    def Token.match(string_scanner)
+      max_match_len = 0
+      matching_regexp = nil
+      regexps.each do |regexp|
+	if (len = string_scanner.match?(regexp)) and len > max_match_len
+	  max_match_len = len
+	  matching_regexp = regexp
+	end
+      end
+      if matching_regexp
+        return max_match_len, matching_regexp
+      else
+	return 0, nil
+      end
     end
 
     def inspect

@@ -90,8 +90,10 @@ module Kanocc
       @start_symbol = start_symbol
       @logger = Logger.new(STDOUT)
       @logger.datetime_format = "" 
-      @logger.level = Logger::WARN 
-      @parser = EarleyParser.new(self, :logger => @logger)
+      @logger.level = Logger::WARN
+      @scanner = Scanner.new
+      @scanner.set_recognized(*find_tokens(@start_symbol))
+      @parser = EarleyParser.new(self, @logger)
     end
     
     def logger=(logger)
@@ -99,10 +101,6 @@ module Kanocc
       @parser.logger = @logger if parser.respond_to?(:logger=)
     end
   
-    def parser=(parser)
-      @parser = parser
-      @parser.logger = @logger if parser.respond_to?(:logger=)
-    end
         
     # Consume input. Kanocc will parse input according to the rules given, and
     # - if parsing succeeds - return an instance of the grammars start symbol.
@@ -116,9 +114,11 @@ module Kanocc
         raise "Input must be a string or an IO object"
       end 
       raise "Start symbol not defined" unless @start_symbol
+      @input = input
+      @scanner.input = input
       @parser.start_symbol = @start_symbol 
       @stack = []
-      @parser.parse(@input)
+      @parser.parse(@scanner)
       @logger.info("Stack: " + @stack.inspect)
       @stack[0][0]
     end
@@ -138,7 +138,7 @@ module Kanocc
     # whitespace takes a variable number of arguments, each of which must be a 
     # regular expression.
     def set_whitespace(*ws)
-      @parser.set_whitespace(*ws)
+      @scanner.set_whitespace(*ws)
     end
     
     # Define which tokens Kanocc should recognize. If this method is not called
@@ -146,7 +146,7 @@ module Kanocc
     # tokens= takes a variable number of arguments. Each argument must either be
     # a string or a class which is a subclass of Kanocc::Token
     def set_tokens(*tokens)
-      @parser.set_recognized(*tokens)
+      @scanner.set_recognized(*tokens)
     end
     
     # The parser must call this method when it have decided upon a reduction.
@@ -176,30 +176,24 @@ module Kanocc
     end
     
     # The parser must call this method when it consumes a token
-    # As argument it should give the consumed token and the positions 
-    # in the input string corresponding to the token. Positions should be given
-    # as the position of the first character of the token and the position of the 
-    # first character after the token.
-    def report_token(tokenmatch, element)
-      @logger.info("Pushing token: " + element.inspect)
-      match = tokenmatch[:matches].find do |m| 
-	m[:token] == element || m[:literal] == element
-      end 
-       
-      if match[:token]  
-        token = match[:token].new
-        token.m = match[:regexp].match(tokenmatch[:string])
-        token.send(match[:method_name]) if match[:method_name] 
+    # As argument it should give the LexicalMatch and the matched terminal.
+    def report_token(lexical_match, terminal)
+      start_pos = lexical_match.start_pos
+      length = lexical_match.length
+      stringpart = @input.slice(start_pos, length)
+      if terminal.class == Class # It's a token
+	instance = terminal.new
+	regexp = lexical_match.regexp(terminal)
+	instance.m = regexp.match(stringpart)
+        if method = terminal.method(regexp)
+	  instance.send(method)
+	end
       else # It's a string literal
-        token = match[:literal]
+	instance = terminal
       end
-      
-      start_pos = tokenmatch[:start_pos]
-      end_pos = start_pos + tokenmatch[:length]
-      token_with_pos = [token, start_pos, end_pos]
-      
-      @stack.push(token_with_pos)
-      show_stack 
+
+      @stack.push([instance, start_pos, start_pos + length])
+      show_stack
     end
        
     def find_tokens(nonterminal)   
@@ -240,7 +234,7 @@ module Kanocc
         gs.inspect
       end
     end
-  
+
   end
     
   class Rhs < Array
@@ -271,5 +265,3 @@ module Kanocc
     end
   end
 end
-
-

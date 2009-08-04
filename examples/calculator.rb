@@ -86,13 +86,13 @@ parser = Kanocc::Kanocc.new(Program)
 # Feed it some input
 $source = <<-EOF
   2 + 3
-  3 + 2 +
   7 - 2 - 1
   3 * 2 + 4
   4 + 3 * 3
-  0xFF + 7
 EOF
-puts "parsing: \n" + $source
+
+
+#puts "parsing: \n" + $source
 
 # and go
 parser.parse($source)

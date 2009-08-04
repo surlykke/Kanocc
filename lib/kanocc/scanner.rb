@@ -22,7 +22,7 @@ require 'rubygems'
 require 'ruby-debug'
 module Kanocc
   class Scanner
-    attr_accessor :logger, :current_match
+    attr_accessor :logger, :current_match, :input
 
     def initialize(init = {})
       @logger = init[:logger] 
@@ -31,10 +31,11 @@ module Kanocc
         @logger.level = Logger::WARN
       end
       @ws_regs = [/\s/]
-      @recognizables = []
-      @regexps = []
+      @terminals = []
+      @string_patterns = {}
       @input = ""
       @stringScanner = StringScanner.new(@input)
+      @current_match = nil
     end
     
     def set_whitespace(*ws_regs)
@@ -44,86 +45,96 @@ module Kanocc
       @ws_regs = ws_regs
     end
     
-    def set_recognized(*rec)
+    def set_recognized(*recognizables)
       @recognizables = []
-      rec.each do |r| 
-        if r.class == Class and r.ancestors.include?(Token)
-	  @recognizables = @recognizables + r.patterns
-        elsif r.is_a? String
-          @recognizables << {:literal => r,
-	                     :regexp  => Regexp.new(Regexp.escape(r))}
-        else
-          raise "set_recognized must be given a list of Tokens classes and or strings, got #{rec.inspect}"
-        end
+      @string_patterns = {}
+      recognizables.each do |recognizable|
+	unless (recognizable.class == Class and recognizable.ancestors.include?(Token)) or
+	       recognizable.is_a?(String)
+          raise "set_recognized must be given a list of Tokens classes" +
+	        "and or strings, got #{recognizable.inspect}"
+	end
+	@recognizables << recognizable
+	if recognizable.is_a? String
+	  @string_patterns[recognizable] = Regexp.new(Regexp.escape(recognizable))
+	end
       end
     end
    
     def input=(input)
       @input = input
       @stringScanner = StringScanner.new(@input)
+      @current_match = nil
     end
 
     def next_match!
-      @current_match = do_match!
+      do_match!
       return @current_match
     end
 
     private 
 
     def do_match!
-      if @stringScanner.pos >= @stringScanner.string.length
-        return nil;
-      end
-      if (token_match = match_token)[:length] > 0
-        @stringScanner.pos += token_match[:length] 
-	return token_match
+      if @stringScanner.pos >= @input.length
+	@current_match = nil
+      elsif match_token
+        @stringScanner.pos += @current_match.length
       elsif (whitespace_len = match_whitespace) > 0
-        @stringScanner.pos += whitespace_len 
-	return do_match!
+        @stringScanner.pos += whitespace_len
+	do_match! 
       else 
 	# So we've not been able to match tokens nor whitespace.
         # We return the first character of the remaining input as a string
         # literal
-        string = @stringScanner.string.slice(@stringScanner.pos, 1)
-        @stringScanner.pos += 1 
-	matches = [{:literal => string, 
-	            :regexp  => Regexp.new(Regexp.escape(string))}] 
-	return {:matches => matches,
-	        :string => string,
-	        :start_pos => @stringScanner.pos,
-		:length => 1}
+	str = @stringScanner.string.slice(@stringScanner.pos, 1)
+	regexp = Regexp.new(Regexp.escape(str))
+	@current_match = LexicalMatch.new([str], {str=>regexp}, @stringScanner.pos, 1)
+	@stringScanner.pos += 1
       end
     end
 
     private
  
     def match_token
-      matches = []
+      matching_terminals = []
+      regexps = {}
       max_length = 0 
-      @recognizables.each do |rec| 
-	if (len = @stringScanner.match?(rec[:regexp])) and len > 0 
+      @recognizables.each do |recognizable|
+	len, regexp = match(recognizable)
+	if len > 0
 	  if len > max_length
             # Now, we have a match longer than whatever we had, 
             # so we discharge what we had, and save the new one
-            matches = [rec]
-            max_length = len
+            matching_terminals = [recognizable]
+            regexps = {recognizable => regexp}
+	    max_length = len
           elsif len == max_length
             # This regular expression matches a string of same length 
-            # as our previous match, so we prepare to return both
-            matches << rec 
+            # as our previous match(es), so we prepare to return both/all
+            matching_terminals << recognizable
+	    regexps[recognizable] = regexp
           end
         end
       end
-      start_pos = @stringScanner.pos
-      string = @stringScanner.string.slice(start_pos, max_length)
-      # Pack up what we found in a hash and return it 
-      return {:matches => matches, 
-	      :string  => string, 
-	      :start_pos => start_pos, 
-	      :length => max_length}
+      if max_length == 0
+	return false
+      else
+	@current_match = LexicalMatch.new(matching_terminals, regexps, @stringScanner.pos, max_length)
+	return true
+      end
     end
-    
-     
+
+    def match(recognizable)
+      if recognizable.class == Class # It must be a token
+	return recognizable.match(@stringScanner)
+      elsif (len = @stringScanner.match?(@string_patterns[recognizable])) and len > 0
+	return len, @string_patterns[recognizable]
+      else
+	return 0, nil
+      end
+    end
+
+
     def match_whitespace
       max_len = 0
       for i in 0..@ws_regs.size - 1 do
@@ -135,8 +146,21 @@ module Kanocc
       return max_len 
     end
   end
- 
-  
+
+  class LexicalMatch
+    attr_accessor :terminals, :start_pos, :length
+
+    def initialize(terminals, regexps, start_pos, length)
+      @terminals = terminals
+      @regexps = regexps
+      @start_pos = start_pos
+      @length = length
+    end
+
+    def regexp(terminal)
+      @regexps[terminal]
+    end
+  end
 end
 
 
