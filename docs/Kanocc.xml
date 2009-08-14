@@ -10,8 +10,7 @@
 <subtitle>Kanocc ain't no compiler-compiler</subtitle>
 
 <subtitle>
-  Documentation for the ruby framework 'Kanocc', 
-  which offers parsing and translation functionality.
+  Documentation for the ruby parsing framework 'Kanocc'.
 </subtitle>
 
 <author>
@@ -184,7 +183,7 @@ In this chapter we'll look at how to write an interpreter using Kanocc.
 
 <para>
 Most texts on grammars, parsers and such use arithmetic expressions as example. 
-Obviously we don't want to be at odds with this tradition, so we'll do a simple interpreter,
+Obviously we don't want to be at odds with this tradition, so we'll do an interpreter,
 that can understand and evaluate simple arithmetic expressions.
 </para>
 
@@ -209,7 +208,7 @@ Factor  ::= Number
 <para>
 This grammar is made up of the nonterminals <literal remap="tt">Expr</literal>, <literal remap="tt">Term</literal> and <literal remap="tt">Factor</literal>
 and 9 tokens:
-<literal remap="tt">Number</literal> which is suppose to match a sequence of digits, and 8 string literalss: 
+<literal remap="tt">Number</literal> which is suppose to match a sequence of digits, and 8 string literals: 
 <literal remap="tt">"("</literal>, <literal remap="tt">")"</literal>, <literal remap="tt">"+"</literal>, <literal remap="tt">"-"</literal>, <literal remap="tt">"*"</literal>, <literal remap="tt">"/"</literal>, <literal remap="tt">"\n"</literal>, <literal remap="tt">"exit"</literal>
 </para>
 
@@ -232,7 +231,7 @@ end
 # Define the nonterminals Expr, Term and Factor with
 # their rules
        
-# First, a forward declarations
+# First, a forward declaration
 class Expr &lt; Kanocc::Nonterminal 
 end   
   
@@ -300,7 +299,7 @@ during lexical scanning.
 </para>
 
 <para>
-Obviously, string literal tokens (such as <literal remap="tt">"("</literal>, <literal remap="tt">"exit"</literal>, <literal remap="tt">"\n"</literal>,..)
+Obviously, string literals (such as <literal remap="tt">"("</literal>, <literal remap="tt">"exit"</literal>, <literal remap="tt">"\n"</literal>,..)
 doesn't need to have patterns attached. All you have to do is mention them in grammarrules,
 and Kanocc will look for them in the input.
 </para>
@@ -314,7 +313,7 @@ so that Kanocc knows how to create instances.
 <title>Semantics</title>
 
 <para>
-You'll have noticed that the method <literal remap="tt">Kanocc::Token.pattern</literal> takes a block
+You'll have noticed that the method <literal remap="tt">Kanocc::Token.pattern</literal> takes a block as
 it's final argument. This allows you to initialize the token instances that Kanocc creates.
 </para>
 
@@ -384,15 +383,6 @@ With this change, the calculator in our example above will be able to accept exp
 
 </sect2>
 
-<sect2>
-<title>Precedence</title>
-
-<para>
-TODO        
-</para>
-
-</sect2>
-
 </sect1>
 
 <sect1>
@@ -404,8 +394,8 @@ whitespace.
 </para>
 
 <para>
-You may redefine this, if you wish, by calling the method <literal remap="tt">Kanocc::Kanocc&num;setWhitespace</literal>.
-<literal remap="tt">setWhitespace</literal> takes a list of regular expressions as argument.
+You may redefine this, if you wish, by calling the method <literal remap="tt">Kanocc::Kanocc&num;set_whitespace</literal>.
+<literal remap="tt">set_whitespace</literal> takes a list of regular expressions as argument.
 </para>
 
 <para>
@@ -540,8 +530,9 @@ Note how, in our example above, this allows us to set @val in the class instance
 </para>
 
 </sect2>
+</sect1>
 
-<sect2>
+<sect1>
 <title>Precedence</title>
 
 <para>
@@ -568,17 +559,11 @@ This grammar is ambigous. For example it doesn't specify whether to interpret th
 </para>
 
 <para>
-The remedy for this is <emphasis>precedence</emphasis> which we will look at now.
-</para>
-
-<sect3>
-<title>Rule-precedence</title>
-
-<para>
-You assign precedence to a rule by following the call to rule by a call to 
+To control this you assign <emphasis>precedence</emphasis> to your grammarules. This is done
+by following the call to rule by a call to 
 
 <screen>
-Nonterminal.prec
+Nonterminal.precedence
 </screen>
  
 with an integer as argument. Default precedence is 0, so if you give a precedence &#62; 0 
@@ -586,7 +571,7 @@ you increase precedence - i.e make Kanocc more inclined to use the production.
 </para>
 
 <para>
-Using rule precedence, we can rewrite our example to:  
+Using precedence, we can rewrite our example to:  
 
 <screen>
 require "rubygems"   
@@ -602,8 +587,8 @@ class Expr &lt; Kanocc::Nonterminal
         
   rule(Expr, "+", Expr) { @val = @rhs[0].val + @rhs[2].val}
   rule(Expr, "-", Expr) { @val = @rhs[0].val - @rhs[2].val}
-  rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; prec -1
-  rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val}; prec -1 
+  rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; precedence -1
+  rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val}; precedence -1
   rule("(", Expr, ")") { @val = @rhs[1].val}
   rule(Number) {@val = @rhs[0].val}
 end
@@ -614,16 +599,15 @@ puts myParser.parse('3 + 4 - 2').val
 puts myParser.parse('8 - 2 * 3').val 
 </screen>
 
-The two calls to <literal remap="tt">prec</literal> gave the rules for multiplication and division higher precedence.
+The two calls to <literal remap="tt">prec</literal> gave the rules for multiplication and division lower precedence.
 </para>
 
 <para>
-Note that we gave multiplication and division a <emphasis>lower</emphasis> precedence. 
-This seems counter intuitive, as we know
-that the mathematical operators <literal remap="tt">'*'</literal> and 
-<literal remap="tt">'/'</literal> have <emphasis>higher</emphasis> precedence 
-than '+' and '-'. 
-The reason for this quirk is that the Earley parsing algorithm, 
+When mathematicians talk about operators and precedence they say that multiplication operators 
+have <emphasis>higher</emphasis> than addition operators. Also traditional parser-generators like 
+yacc or bison would have you asign a higher precedence to '*'. Why then do we assign a lower precedence 
+to multiplication?
+The reason for this quirk is that the Earley parsing algorithm,
 which is employed by Kanocc, constructs the parsetree 
 <emphasis>top-down</emphasis> and then evaluates it 
 <emphasis>bottom-up</emphasis>. To parse our input, 
@@ -672,116 +656,66 @@ expansion
   Expr --> Expr '*' Expr
 </screen> 
 
-Therefore we must give <literal>'-'</literal> a <emphasis>higher</emphasis> precedence 
-than <literal>'*'</literal>.
-
+Therefore we must give multiplication rules a <emphasis>lower</emphasis> precedence.
 </para>
 
-</sect3>
+</sect1>
 
-<sect3>
-<title>Operator precedence</title>
+<sect1>
+    <title>Left- and right-assotiative operators</title>
 
-<para>
-  
-You can call:
+  <para>
+    Consider the expression: <literal>8 - 5 + 3</literal>. Given our grammar <literal>Expr</literal>
+    may expandt to that string in 2 ways:
+
+  <screen>
+            Expr
+          /  |   \
+       Expr '+'  Number
+      /  | \          \
+ Number '-' Number    '3'
+   |          |
+  '8'        '5'
+  </screen>
+
+  or
+
+  <screen>
+            Expr
+          /  |   \
+     Number '-'   Expr
+       |         /  |  \
+      '8'      '5' '+' '3'
+
+  </screen>.
+  </para>
+  <para>
+  What we would like is the first variant - operators '+' and '-' are <emphasis>left associative</emphasis>.
+  If you look at the parse trees above, you'll notice that the topmost Expr of the first tree has it's rightmost
+  nonterminal (Number) expand to '3' - one token - while the topmost Expr of the second tree has it's
+  rightmost nonterminal (Expr) expand to '5' '+' '3' - a sequence of three tokens. You can control this by declaring
+  wether Kanocc should expand the rightmost grammarsymbol of a rule to <emphasis>as much</emphasis> or <emphasis>as little</emphasis>
+  as possible. By default Kanocc expands the rightmost grammarsymbol of a rule to <emphasis>as little</emphasis> as possible.
+  If you want to change that, eg. have your addition-operators be right-associative, you can declare rules to <emphasis>derive right</emphasis>.
+  In our example you might do:
+  </para>
 
 <screen>
-Kanocc::Nonterminal.oPrec
+.
+.
+
+class Expr &lt; Kanocc::Nonterminal
+  rule(Expr, "+", Expr) { @val = @rhs[0].val + @rhs[2].val}; derives_right
+  rule(Expr, "-", Expr) { @val = @rhs[0].val - @rhs[2].val}; derives_right
+ end
+
+.
+.
 </screen>
 
-to assign precedence to an operator in your grammar. For example: 
-
-<screen>
-oPrec('*', -1).
-</screen>
-
-</para>
-
-<para>
-In our example we could have defined the class <literal remap="tt">Expr</literal> as:
-
-<screen>
-class Expr &lt; Kanocc::Nonterminal 
-  attr_reader :val 
-        
-  rule(Expr, "+", Expr) { @val = @rhs[0].val + @rhs[2].val}
-  rule(Expr, "-", Expr) { @val = @rhs[0].val - @rhs[2].val}
-  rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; 
-  rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val};  
-  rule("(", Expr, ")") { @val = @rhs[1].val} 
-  rule(Num) { @val = @rhs[0].val} 
-  oPrec('*', '/', -1)
-end.
-</screen>
-
-</para>
-
-<para>
-When you define operator precedence like this, Kanocc will apply it to those rules that have the operator as it's
-first terminal on the righthand-side. <footnote><para>I think this is how Yacc/Bison works.</para></footnote>
-</para>
-
-<para>
-The method  <literal remap="tt">Kanocc.oPrec</literal> takes a variable number of arguments. If you give it 
-<literal remap="tt">N</literal> arguments, the first <literal remap="tt">N-1</literal> of them must be terminals 
-and the last must be a number.
-</para>
-
-<para>
-When you call <literal remap="tt">Kanocc::Nonterminal.oPrec</literal> like this,
-it will have effect when Kanocc is considering two
-rules belonging to the nonterminal where you made the call - in this example 
-<literal remap="tt">Expr</literal>.
-</para>
-
-<para>
-Alternatively you can define operator precedence globally, calling:
-
-<screen>
-Kanocc.oPrec. 
-</screen>
-
-In our example it would look like:  
-
-<screen>
-class Expr &lt; Kanocc::Nonterminal 
-  attr_reader :val 
-          
-  rule(Expr, "+", Expr) { @val = @rhs[0].val + @rhs[2].val}
-  rule(Expr, "-", Expr) { @val = @rhs[0].val - @rhs[2].val}
-  rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; 
-  rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val};  
-  rule("(", Expr, ")") { @val = @rhs[1].val} 
-  rule(Num) { @val = @rhs[0].val} 
-end.
-</screen>
-
-- and then:
-
-<screen>
-myParser = Kanocc::Kanocc.new
-myParser.oPrec('*', '/', -1)
-</screen>
-
-</para>
-
-<para>
-Operator precedence defined like this will have effect when Kanocc is 
-considering any pair of rules. 
-</para>
-
-<para>
-In some languages an operator may have different 
-meanings in different contexts. Think, for example, about the operator '*' in C. 
-It can mean multiplication and pointer-indirection. By making your 
-operator-precedence assignments at the nonterminal level, you can make 
-your grammar more readable.
-</para>
-
-</sect3>
-
-</sect2>
+If Kanocc is expanding a nonterminal and has several rules to choose from <emphasis>and</emphasis> they all
+derive right, it will choose to expand by the rule whos rightmost symbol can expand to the longest sequence of
+input tokens. 
 
 </sect1>
 

@@ -57,35 +57,29 @@ module Kanocc
     
 
     def parse(scanner)
+      @scanner = scanner
       prepare
       
-      while (scanner.next_match!) do
+     while (@scanner.next_match!) do
         @inputPos += 1
-	@input_symbols.push(scanner.current_match)
+        @input_symbols.push(scanner.current_match)
         @items.prepare_for_n(@inputPos)
         # scan, predict and complete until no more can be added
 
-        # Scan: At position n, for each terminal a in current match, and each item
-	# of form [A -> x*ay, i, n-1], add [A -> xa*y, i, n]
-        scanner.current_match.terminals.each do |terminal|
-          @items.items_n_and_symbol_after_dot(@inputPos -1, terminal).each do |item|
-            @items.add(item.rule, item.dot + 1, item.j, @inputPos,  @inputPos - 1)
-          end
+        scan
+
+        predict_and_complete(@inputPos)
+
+        if @logger
+          @logger.info("\nItems at #{@inputPos}:\n" +
+                       @input_symbols[@inputPos].inspect + "\n" +
+                       @items.items_at_n(@inputPos).map{|item| " " + item.inspect}.join("\n") + "\n")
         end
 
-	predict_and_complete(@inputPos)
-
-	if @logger
-	  @logger.info("\nItems at #{@inputPos}:\n" +
-	               @input_symbols[@inputPos].inspect + "\n" +
-	               @items.items_at_n(@inputPos).map{|item| " " + item.inspect}.join("\n") + "\n")
-	end
-
-	handle_error if @items.number_at_n(@inputPos) == 0
+        handle_error if @items.number_at_n(@inputPos) == 0
       end
 
       reduce
-
     end
     
     def prepare
@@ -99,14 +93,22 @@ module Kanocc
       predict_and_complete(0)
       if @logger
         @logger.info("\nItems at 0:\n" +
-	             @items.items_at_n(0).map{|item| " " + item.inspect}.join("\n") + "\n")
+                     @items.items_at_n(0).map{|item| " " + item.inspect}.join("\n") + "\n")
       end
     end
+    
+    # Scan: At position n, for each terminal a in current match, and each item
+    # of form [A -> x*ay, i, n-1], add [A -> xa*y, i, n]
+    def scan
 
-    # Consume: Given n'th inputsymbol x, for each item of form
-    # [A -> a*xb, j, n-1] add item [A -> ax*b, j, n]
-    def consume_token
+      @scanner.current_match.terminals.each do |terminal|
+        @items.items_n_and_symbol_after_dot(@inputPos -1, terminal).each do |item|
+           @items.add(item.rule, item.dot + 1, item.j, @inputPos,  @inputPos - 1)
+        end
+      end
+
     end
+
 
     # Predict: For any item of form [A -> a*Bb, j, n] and for all rules of form
     # B -> c, add [B -> *c, n, n].
@@ -118,21 +120,21 @@ module Kanocc
     def predict_and_complete(pos, show=false)
       prev_size = 0
       while true do
-	break if prev_size >= @items.number_at_n(pos)
-	prev_size = @items.number_at_n(pos)
-	@items.items_at_n(pos).each do |item|
-	  if item.dot >= item.rule.rhs.length
-	    # complete
-	    @items.items_n_and_symbol_after_dot(item.j, item.rule.lhs).each do |previtem|
-	      @items.add(previtem.rule, previtem.dot + 1, previtem.j, pos, item.j)
-	    end
-	  elsif item.rule.rhs[item.dot].respond_to?(:rules)
-	    # predict
-	    item.rule.rhs[item.dot].rules.each do |rule|
-	      @items.add(rule, 0, pos, pos, -1)
-	    end
-	  end
-	end
+        break if prev_size >= @items.number_at_n(pos)
+        prev_size = @items.number_at_n(pos)
+        @items.items_at_n(pos).each do |item|
+          if item.dot >= item.rule.rhs.length
+            # complete
+            @items.items_n_and_symbol_after_dot(item.j, item.rule.lhs).each do |previtem|
+              @items.add(previtem.rule, previtem.dot + 1, previtem.j, pos, item.j)
+            end
+          elsif item.rule.rhs[item.dot].respond_to?(:rules)
+            # predict
+            item.rule.rhs[item.dot].rules.each do |rule|
+              @items.add(rule, 0, pos, pos, -1)
+            end
+          end
+        end
       end
     end
     
@@ -140,20 +142,24 @@ module Kanocc
       if j = find_error_items()
         @items.add(ErrorRule, 0, j, @inputPos - 1, -1)
         predict_and_complete(@inputPos - 1, true)
-        consume_token
-        predict_and_complete(@inputPos)
-	if @logger
-          @logger.info("Items at #{@inputPos} after error handling:\n" +
-                       @items.items_at_n(@inputPos).inspect)
+        if @logger
+	  @logger.info("Items at #{@inputPos - 1} after error handling:\n" + 
+	               @items.items_at_n(@inputPos - 1).map {|item| item.inspect}.join("\n"))
 	end
+	scan
+        predict_and_complete(@inputPos)
+        if @logger
+          @logger.info("Items at #{@inputPos} after error handling:\n" +
+                       @items.items_at_n(@inputPos).map {|item| item.inspect}.join("\n"))
+        end
       end
     end
 
     def find_error_items
       for n in (@inputPos - 1).downto(0) do
         if @items.items_n_and_symbol_after_dot(n, Error).size > 0
-	  return n
-	end
+          return n
+        end
       end
       return nil
     end
@@ -182,11 +188,11 @@ module Kanocc
       
     def reduce
       item = @items.items_at_n(@inputPos).find do |item|
-	@start_symbol == item.rule.lhs and item.dot == 1
+        @start_symbol == item.rule.lhs and item.dot == 1
       end
       if item
         # There is at most one of those
-	make_parse(item, @inputPos, 0)
+        make_parse(item, @inputPos, 0)
       else
         raise(KanoccException, "It didn't parse")
       end
@@ -208,7 +214,7 @@ module Kanocc
         @kanocc.report_reduction(subitem.rule)
       else
         make_parse(prev_item, prev_pos, prev_prev_pos)
-	symbol = item.symbol_before_dot
+        symbol = item.symbol_before_dot
         @kanocc.report_token(@input_symbols[pos], symbol)
       end
     end
@@ -222,7 +228,7 @@ module Kanocc
 
       derives_right = all_derives_right(items)
       if derives_right
-	items = find_highest(items) {|item| -item.prev_pos_min}
+        items = find_highest(items) {|item| -item.prev_pos_min}
       else
         items = find_highest(items){|item| item.prev_pos_max}
       end
@@ -234,7 +240,7 @@ module Kanocc
       collect = []
       top_val = nil;
       items.each do |item|
-	val = expr.call(item)
+        val = expr.call(item)
         if top_val == nil or top_val < val
           collect = [item]
           top_val = val
@@ -284,9 +290,9 @@ module Kanocc
 
     def set_prev_pos(new_prev_pos)
       if new_prev_pos < @prev_pos_min
-	@prev_pos_min = new_prev_pos
+        @prev_pos_min = new_prev_pos
       elsif new_prev_pos > @prev_pos_max
-	@prev_pos_max = new_prev_pos
+        @prev_pos_max = new_prev_pos
       end
     end
     
@@ -315,19 +321,19 @@ module Kanocc
 
     def add(rule, dot, j, n, prev_pos)
       if item = @items_rule_dot_j_n[[rule,dot,j,n]]
-	item.set_prev_pos(prev_pos)
+        item.set_prev_pos(prev_pos)
       else
-	item = Item.new(rule, dot, j, n, prev_pos, prev_pos)
-	@items_rule_dot_j_n[[rule,dot,j,n]] = item
-	@item_lists[item.n] = [] unless @item_lists[item.n]
-	@item_lists[item.n] << item
+        item = Item.new(rule, dot, j, n, prev_pos, prev_pos)
+        @items_rule_dot_j_n[[rule,dot,j,n]] = item
+        @item_lists[item.n] = [] unless @item_lists[item.n]
+        @item_lists[item.n] << item
 
-	if item.symbol_after_dot
-	  unless @items_n_and_symbol_after_dot[[item.n, item.symbol_after_dot]]
-	    @items_n_and_symbol_after_dot[[item.n, item.symbol_after_dot]] = []
-	  end
-	  @items_n_and_symbol_after_dot[[item.n, item.symbol_after_dot]] << item
-	end
+        if item.symbol_after_dot
+          unless @items_n_and_symbol_after_dot[[item.n, item.symbol_after_dot]]
+            @items_n_and_symbol_after_dot[[item.n, item.symbol_after_dot]] = []
+          end
+          @items_n_and_symbol_after_dot[[item.n, item.symbol_after_dot]] << item
+        end
       end
     end
 
@@ -349,9 +355,9 @@ module Kanocc
 
     def full_items_by_lhs_j_and_n(lhs, j, n)
       @item_lists[n].find_all do |item|
-	item.dot >= item.rule.rhs.size and
-	item.j == j and
-	item.rule.lhs == lhs
+        item.dot >= item.rule.rhs.size and
+        item.j == j and
+        item.rule.lhs == lhs
       end
     end
 

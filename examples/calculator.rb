@@ -67,10 +67,10 @@ class Line < Kanocc::Nonterminal
     str = $source[@rhs.start_pos..@rhs.end_pos - 2]
     puts str + " gives: " + @rhs[0].val.to_s
   end
-  rule(Kanocc::Error, "\n") do 
-    error_string = $source[@rhs.start_pos..@rhs.end_pos]
-    puts "Sorry - didn't understand: #{error_string.inspect}"
-  end
+#  rule(Kanocc::Error, "\n") do 
+#    error_string = $source[@rhs.start_pos..@rhs.end_pos]
+#    puts "Sorry - didn't understand: #{error_string.inspect}"
+#  end
 end
 
 class Program < Kanocc::Nonterminal
@@ -84,11 +84,13 @@ parser = Kanocc::Kanocc.new(Program)
 #parser.logger.level = Logger::INFO
 
 # Feed it some input
+
 $source = <<-EOF
   2 + 3
   7 - 2 - 1
   3 * 2 + 4
   4 + 3 * 3
+	8 - 3/2
 EOF
 
 
@@ -96,4 +98,5 @@ EOF
 
 # and go
 parser.parse($source)
+
 
