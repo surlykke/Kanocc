@@ -16,7 +16,6 @@
 #  version 3 along with Kanocc.  If not, see <http://www.gnu.org/licenses/>.
 #
 require 'kanocc/grammar_rule'
-require 'ruby-debug'
 module Kanocc
   class Nonterminal
     @@rules = Hash.new
@@ -64,35 +63,46 @@ module Kanocc
   
     def Nonterminal.zm(symbols, sep = nil)
       list_class = new_list_class 
+      non_empty_list_class = new_list_class
       list_class.rule() {@elements = []}
+      list_class.rule(non_empty_list_class) {@elements = @rhs[0].elements}
+      non_empty_list_class.rule(*symbols) {@elements = @rhs}
       if sep
-        list_class.rule(list_class, sep, *symbols) {@elements = @rhs[0].elements + @rhs[2..@rhs.length]}
+        non_empty_list_class.rule(non_empty_list_class, sep, *symbols) {@elements = @rhs[0].elements + @rhs[2..@rhs.length]}
       else
-        list_class.rule(list_class, *symbols) {@elements = @rhs[0].elements + @rhs[1..@rhs.length]}
+	non_empty_list_class.rule(non_empty_list_class, *symbols) {@elements = @rhs[0].elements + @rhs[1..@rhs.length]}
       end
       return list_class
     end
     
     def Nonterminal.om(symbols, sep = nil)
       symbols = [symbols] unless symbols.is_a? Array
-      list_class = new_list_class
-      list_class.rule(*symbols) {@elements = @rhs}
+      non_empty_list_class = new_list_class
+      non_empty_list_class.rule(*symbols) {@elements = @rhs}
       if sep
-        list_class.rule(list_class, sep, *symbols) {@elements = @rhs[0].elements + @rhs[2..@rhs.length]}
+        non_empty_list_class.rule(non_empty_list_class, sep, *symbols) {@elements = @rhs[0].elements + @rhs[2..@rhs.length]}
       else
-        list_class.rule(list_class, *symbols) {@elements = @rhs[0].elements + @rhs[1..@rhs.length]}
+        non_empty_list_class.rule(non_empty_list_class, *symbols) {@elements = @rhs[0].elements + @rhs[1..@rhs.length]}
       end
-      return list_class
+      return non_empty_list_class
     end
-    
+
+    def Nonterminal.zo(symbols)
+      zero_or_one_class = new_list_class
+      zero_or_one_class.rule(*symbols) {@elements = @rhs}
+      zero_or_one_class.rule() {@elements = []}
+    end
+
     @@listClassNumber = 0
  
     def Nonterminal.new_list_class
-      list_class = Class.new(List)
+      list_class = Class.new(AnonymousNonterminal)
       @@listClassNumber += 1
+
       def list_class.inspect
         return "anonList_#{@@listClassNumber}"
       end
+
       return list_class
     end
 
@@ -152,19 +162,8 @@ module Kanocc
   end
   
   
-  class List < Nonterminal
+  class AnonymousNonterminal < Nonterminal
     attr_reader :elements
-    
-        protected
-    # Assumes @rhs[0] is a Kanocc::List and that rhs.length > 1
-    def collect(strip_separator = false)
-      @elements = @rhs[0].elements
-      if strip_separator
-        @elements = @elements + @rhs[2..@rhs.length]
-      else
-        @elements = @elements + @rhs[1..@rhs.length]
-      end
-    end
   end
 
   class Error < Nonterminal

@@ -19,7 +19,6 @@ require 'stringio'
 require 'strscan'
 require "logger"
 require 'rubygems'
-require 'ruby-debug'
 module Kanocc
   class Scanner
     attr_accessor :logger, :current_match, :input

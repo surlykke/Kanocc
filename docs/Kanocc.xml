@@ -457,18 +457,13 @@ rule(Expr, "+", Term) {@val = @rhs[0].val + @rhs[2].val}
 </para>
 
 <para>
-The arguments to calls to <literal remap="tt">rule</literal> must be nonterminals 
+The arguments to <literal remap="tt">rule</literal> must be nonterminals 
 (that means: classes that inherit from <literal remap="tt">Kanocc::Nonterminal</literal>), 
 tokens (classes that inherit from <literal remap="tt">Kanoc::Token</literal>) or strings. 
 </para>
 
 <para>
-The parameterlist may be followed by a block, defining the semantic actions to take when 
-the reduction is performed.
-</para>
-
-<para>
-Nonterminals must always have parameterless <literal remap="tt">initialize</literal> method so Kanocc 
+Nonterminals must always have a parameterless <literal remap="tt">initialize</literal> method so Kanocc
 can create instances of them.
 </para>
 
@@ -481,8 +476,7 @@ This allows you to attach semantics to grammarrules.
 </para>
 
 <para>
-Whenever Kanocc reduces by a grammarrule, it creates an instance of the class (Nonterminal)
-that has the rule. 
+Whenever Kanocc reduces by a grammarrule, it creates an instance of the class that has the rule. 
 </para>
 
 <para>
@@ -492,14 +486,13 @@ For example, when reducing by the rule
 Expr ::= Expr "+" Term
 </screen>
 
-Kanocc will create an instance of the class Expr. This happens bottom-up, so at this point Kanocc 
-will already have made instances of the nonterminals on the right-hand side 
-of the rule (<literal remap="tt">Expr</literal> and <literal remap="tt">Term</literal>). 
+Kanocc will create an instance of the class Expr.
 </para>
 
-<para>
+This happens bottom-up, so at this point Kanocc 
+will already have made instances of the nonterminals on the right-hand side 
+of the rule (<literal remap="tt">Expr</literal> and <literal remap="tt">Term</literal>).
 Lets call these instances <literal remap="tt">expr</literal> and <literal remap="tt">term</literal>, respectively.
-</para>
 
 <para>
 When Kanocc does the reduction it:
@@ -599,19 +592,18 @@ puts myParser.parse('3 + 4 - 2').val
 puts myParser.parse('8 - 2 * 3').val 
 </screen>
 
-The two calls to <literal remap="tt">prec</literal> gave the rules for multiplication and division lower precedence.
+The two calls to <literal remap="tt">precedence</literal> gave the rules for multiplication and division lower precedence.
 </para>
 
 <para>
 When mathematicians talk about operators and precedence they say that multiplication operators 
-have <emphasis>higher</emphasis> than addition operators. Also traditional parser-generators like 
+have <emphasis>higher</emphasis> precedence than addition operators. Also traditional parser-generators like
 yacc or bison would have you asign a higher precedence to '*'. Why then do we assign a lower precedence 
 to multiplication?
+</para>
+<para>
 The reason for this quirk is that the Earley parsing algorithm,
-which is employed by Kanocc, constructs the parsetree 
-<emphasis>top-down</emphasis> and then evaluates it 
-<emphasis>bottom-up</emphasis>. To parse our input, 
-say <literal remap="tt">'8 - 2 * 3'</literal>, the Earley parser must
+which is employed by Kanocc, constructs the parse tree top-down. The Earley parser must
 find a way to expand the nonterminal <literal remap="tt">Expr</literal> to the 
 string <literal remap="tt">'8 - 2 * 3'</literal>. 
 This can be done in two ways:
@@ -665,8 +657,8 @@ Therefore we must give multiplication rules a <emphasis>lower</emphasis> precede
     <title>Left- and right-assotiative operators</title>
 
   <para>
-    Consider the expression: <literal>8 - 5 + 3</literal>. Given our grammar <literal>Expr</literal>
-    may expandt to that string in 2 ways:
+    Consider the expression: <literal>8 - 5 + 3</literal>. Given our grammar, <literal>Expr</literal>
+    may expand to that in 2 ways:
 
   <screen>
             Expr
@@ -681,23 +673,25 @@ Therefore we must give multiplication rules a <emphasis>lower</emphasis> precede
   or
 
   <screen>
-            Expr
-          /  |   \
-     Number '-'   Expr
-       |         /  |  \
-      '8'      '5' '+' '3'
+       Expr
+     /  |   \
+Number '-'   Expr
+  |         /  |  \
+ '8'   Number '+'  Number
+         |           |
+        '5'         '3'
 
-  </screen>.
+  </screen>
   </para>
   <para>
-  What we would like is the first variant - operators '+' and '-' are <emphasis>left associative</emphasis>.
+  By default, Kanocc will choose the first variant, which is well in tune with the fact that operators '+' and '-' are <emphasis>left associative</emphasis>.
   If you look at the parse trees above, you'll notice that the topmost Expr of the first tree has it's rightmost
   nonterminal (Number) expand to '3' - one token - while the topmost Expr of the second tree has it's
   rightmost nonterminal (Expr) expand to '5' '+' '3' - a sequence of three tokens. You can control this by declaring
   wether Kanocc should expand the rightmost grammarsymbol of a rule to <emphasis>as much</emphasis> or <emphasis>as little</emphasis>
   as possible. By default Kanocc expands the rightmost grammarsymbol of a rule to <emphasis>as little</emphasis> as possible.
   If you want to change that, eg. have your addition-operators be right-associative, you can declare rules to <emphasis>derive right</emphasis>.
-  In our example you might do:
+  You might do:
   </para>
 
 <screen>
@@ -712,10 +706,11 @@ class Expr &lt; Kanocc::Nonterminal
 .
 .
 </screen>
-
-If Kanocc is expanding a nonterminal and has several rules to choose from <emphasis>and</emphasis> they all
-derive right, it will choose to expand by the rule whos rightmost symbol can expand to the longest sequence of
-input tokens. 
+<para>
+If Kanocc is expanding a nonterminal and has several rules to choose from <emphasis>and they all
+derive right</emphasis>, it will choose to expand by the rule whos rightmost symbol can expand to the longest sequence of
+input tokens.
+</para>
 
 </sect1>
 
@@ -784,29 +779,36 @@ each on one line. We could rewrite the parser like this:
 require "rubygems"   
 require "kanocc"
 
-class Number &lt; Kanocc::Token 
-attr_reader :val 
-pattern(/\d+/) { @val = @m[0].to_i} 
+class Number &lt; Kanocc::Token
+  attr_reader :val
+  pattern(/\d+/) { @val = @m[0].to_i}
 end
 
 
-class Expr &lt; Kanocc::Nonterminal 
-  attr_reader :val 
+class Expr &lt; Kanocc::Nonterminal
+  attr_reader :val
 
   rule(Expr, "+", Expr) { @val = @rhs[0].val + @rhs[2].val}
   rule(Expr, "-", Expr) { @val = @rhs[0].val - @rhs[2].val}
-  rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; prec 1
-  rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val}; prec 1 
+  rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; precedence -1
+  rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val}; precedence -1
   rule("(", Expr, ")") { @val = @rhs[1].val}
   rule(Number) {@val = @rhs[0].val}
 end
 
 class Program &lt; Kanocc::Nonterminal
-  rule(zm(Expr, "\n")) { @rhs[0].each {|expr| puts expr.val}
+	rule(zm(Expr, "\n"), "\n") {@rhs[0].elements.each {|expr| puts expr.val}}
 end
 
-Kanocc::Kanocc.new(Program).parse 
+Kanocc::Kanocc.new(Program).parse &lt;&lt;-EOF
+  2 + 3
+  4 - 1
+  8*(2 + 3)
+EOF
+
 </screen>
+
+In other words: A <literal>Program</literal> is a sequence of <literal>Expr</literal>'s separated by newlines, ending with a newline.
 
 </para>
 
@@ -860,8 +862,8 @@ class Expr &lt; Kanocc::Nonterminal
         
   rule(Expr, "+", Expr) { @val = @rhs[0].val + @rhs[2].val}
   rule(Expr, "-", Expr) { @val = @rhs[0].val - @rhs[2].val}
-  rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; prec 1
-  rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val}; prec 1 
+  rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; precedence -1
+  rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val}; precedence -1
   rule("(", Expr, ")") { @val = @rhs[1].val}
   rule(Number) {@val = @rhs[0].val}
 end
@@ -871,7 +873,7 @@ myParser = Kanocc::Kanocc.new(Expr)
 puts myParser.parse('3 + 4 - -').val 
 </screen>
 
-I.e feeding your parser some input that is not syntactically correct.
+- i.e feed your parser input that is not syntactically correct.
 </para>
 
 <para>
@@ -893,43 +895,41 @@ You'll get something like:
 This is the most basic error-handling Kanocc offers: When it finds that input cannot parse according to the grammar, it will terminate parsing ant raise a <literal remap="tt">Kanocc::ParseException</literal>. This exception will contain the offending input token, it's position, and a list of terminals that Kanocc was expecting at that point.  
 </para>
 
-</chapter>
-
-<chapter>
+<sect1>
 <title>Error recovery </title>
 
 <para>
-Rather than aborting parsing when an error is discovered, it can be nice to be able to skip an error and continue parsing, so that at least all (or most of) the errors in input can be reported in one run.
+Rather than abort parsing when an error is discovered, it can be nice to be able to skip an error and continue parsing, so that at least all (or most of) the errors in input can be reported in one run.
 </para>
 
 <para>
-Kanocc has a special nonterminal <literal remap="tt">Kanocc::Error</literal> which may be used on the 
-right-hand-side of rules. <literal remap="tt">Error</literal> can expand to anything, and rules containing 
-<literal remap="tt">Error</literal> on their right-hand-side will have a precedence of negative infinity. In other words: 
-A rule containing <literal remap="tt">Error</literal> will only be used if Kanocc can see no other way to reduce 
+Kanocc has a special nonterminal <literal remap="tt">Kanocc::Error</literal> which may be used on the
+right-hand-side of rules. <literal remap="tt">Error</literal> can expand to anything, and rules containing
+<literal remap="tt">Error</literal> on their right-hand-side will have a precedence of negative infinity. In other words:
+A rule containing <literal remap="tt">Error</literal> will only be used if Kanocc can see no other way to reduce
 the input to the start symbol.
 </para>
 
 <para>
-Using <literal remap="tt">Kanocc::Error</literal> we can rewrite our example to:  
+Using <literal remap="tt">Kanocc::Error</literal> we can rewrite our example to:
 
 <screen>
-require "rubygems"   
+require "rubygems"
 require "kanocc"
 
-class Number &lt; Kanocc::Token 
-attr_reader :val 
-pattern(/\d+/) { @val = @m[0].to_i} 
+class Number &lt; Kanocc::Token
+attr_reader :val
+pattern(/\d+/) { @val = @m[0].to_i}
 end
 
 
-class Expr &lt; Kanocc::Nonterminal 
-  attr_reader :val 
+class Expr &lt; Kanocc::Nonterminal
+  attr_reader :val
 
   rule(Expr, "+", Expr) { @val = @rhs[0].val + @rhs[2].val}
   rule(Expr, "-", Expr) { @val = @rhs[0].val - @rhs[2].val}
-  rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; prec 1
-  rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val}; prec 1 
+  rule(Expr, "*", Expr) { @val = @rhs[0].val * @rhs[2].val}; precedence -1
+  rule(Expr, "/", Expr) { @val = @rhs[0].val / @rhs[2].val}; precedence -1
   rule("(", Expr, ")") { @val = @rhs[1].val}
   rule(Number) {@val = @rhs[0].val}
 end
@@ -940,7 +940,7 @@ class Line &lt; Kanocc::Nonterminal
 end
 
 class Program &lt; Kanocc::Nonterminal
-  rule(zm(line)) 
+  rule(zm(line))
 end
 
 Kanocc::Kanocc.new(Program).parse &#60;&#60;-EOI
@@ -962,7 +962,7 @@ This should produce:
 <screen>
   5
   2
-  Sorry - didn't understand: "  8 * + 3" 
+  Sorry - didn't understand: "  8 * + 3"
   8
 </screen>
 
@@ -992,7 +992,7 @@ reduced to this error.
 <listitem>
 
 <para>
-<literal remap="tt">@end</literal> which indexes the first character <emphasis>after</emphasis> the erronous 
+<literal remap="tt">@end</literal> which indexes the first character <emphasis>after</emphasis> the erronous
 part of input.
 </para>
 </listitem>
@@ -1002,8 +1002,8 @@ part of input.
 In our example, <literal remap="tt">@program</literal> would reference the string :
 
 <screen>
-&#60;&#60;-EOT 
-exit 
+&#60;&#60;-EOT
+exit
 EOT
 </screen>
 ,
@@ -1017,23 +1017,9 @@ would give
 
 </para>
 
-</chapter>
+</sect1>
 
-<chapter>
-<title>Debugging and loggin</title>
 
-<para>
-TODO
-</para>
-
-</chapter>
-
-<chapter>
-<title>Internals of Kanocc</title>
-
-<para>
-TODO
-</para>
 
 </chapter>
 

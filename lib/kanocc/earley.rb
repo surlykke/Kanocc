@@ -373,7 +373,7 @@ module Kanocc
       @@instance
     end
     def inspect
-      return "·"
+      return "*"
     end
     @@instance = Dot.new
   end

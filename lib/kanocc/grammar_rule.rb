@@ -16,7 +16,6 @@
 #  version 3 along with Kanocc.  If not, see <http://www.gnu.org/licenses/>.
 #
 require 'rubygems'
-require 'ruby-debug'
 module Kanocc
   class GrammarRule
     attr_reader :lhs, :rhs, :method
