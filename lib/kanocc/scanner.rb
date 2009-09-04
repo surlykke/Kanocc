@@ -46,6 +46,8 @@ module Kanocc
     
     def set_recognized(*recognizables)
       @recognizables = []
+      @literals = []
+      @tokens = []
       @string_patterns = {}
       recognizables.each do |recognizable|
 	unless (recognizable.class == Class and recognizable.ancestors.include?(Token)) or
@@ -56,6 +58,9 @@ module Kanocc
 	@recognizables << recognizable
 	if recognizable.is_a? String
 	  @string_patterns[recognizable] = Regexp.new(Regexp.escape(recognizable))
+	  @literals << recognizable
+	else
+	  @tokens << recognizable
 	end
       end
     end
@@ -91,6 +96,7 @@ module Kanocc
 	@stringScanner.pos += 1
       end
     end
+
 
     private
  
@@ -133,7 +139,6 @@ module Kanocc
       end
     end
 
-
     def match_whitespace
       max_len = 0
       for i in 0..@ws_regs.size - 1 do
@@ -142,8 +147,71 @@ module Kanocc
           max_len = len
         end
       end
-      return max_len 
+      return max_len
     end
+
+
+    def do_match2!
+      while @stringScanner.pos < @input.length do
+	look_for_token_match
+	look_for_whitespace_match
+
+	if @whitespace_match_length > @match_length
+	  @stringScanner.pos  += @whitespace_match_length
+	elsif @match_length > 0
+	  @current_match = LexicalMatch.new(@matching_recognizables, @regexps, @stringScanner.pos, @match_length)
+	  @stringScanner.pos += @match_length
+	  break
+	else
+          str = @stringScanner.string.slice(@stringScanner.pos, 1)
+          regexp = Regexp.new(Regexp.escape(str))
+          @current_match = LexicalMatch.new([str], {str=>regexp}, @stringScanner.pos, 1)
+          @stringScanner.pos += 1
+	  break
+	end
+      end
+    end
+
+    def look_for_token_match
+      @matching_recognizables = []
+      @regexps = {}
+      @match_length = 0
+      @tokens.each do |token|
+	new_match_length, regexp = token.match(@stringScanner)
+	if new_match_length > match_length
+	  @matching_recognizables = [token]
+	  @regexps = {token => regexp}
+	  @match_length = new_match_length
+	elsif new_match_length > 0 and new_match_length == match_length
+	  @matching_recognizables << token
+	  @regexps[token] = regexp
+	end
+      end
+      @literals.each do |literal|
+	new_match_length = @stringScanner.match?(@string_patterns[literal])
+	if new_match_length > match_length
+	  matching_recognizables = [literal]
+	  regexps = {literal => @string_patterns[literal]}
+	  match_length = new_match_length
+	elsif new_match_length > 0 and new_match_length == match_length
+	  matching_recognizables << literal
+	  regexps[literal] = @string_paterns[literal]
+	end
+      end
+    end
+
+    def look_for_whitespace_match
+      @whitespace_match_length = 0
+      for i in 0..@ws_regs.size - 1 do
+        len = @stringScanner.match?(@ws_regs[i]) || 0
+        if len > @whitespace_match_length
+          @whitespace_match_length = len
+        end
+      end
+    end
+
+
+
   end
 
   class LexicalMatch

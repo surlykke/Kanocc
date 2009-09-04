@@ -66,7 +66,7 @@ parsing techniques, or if you create a small domain specific language.
 <para>
 Unlike compiler-compilers such as yacc or bison, Kanocc doesn't produce an intermediate 
 file (like a c-program) to be run through a compiler to produce an executable. Kanocc 
-will read your grammar and then parse and execute your input in one run. Hence it's name. 
+reads your grammar and parses and executes your input in one run. Hence it's name.
 </para>
 
 </sect1>
@@ -420,11 +420,32 @@ You have all the power of Ruby regular expressions at your disposal here.
 
 <para>
 If you're <emphasis>very</emphasis> observant, you'll have noticed that the literal <literal remap="tt">"\n"</literal> which 
-we used in our example above is also whitespace. This is ok. Kanocc will always try first to form 
-tokens from input. If that's not possible it will try to discard some of it as whitespace. If
-that isn't possible either, Kanocc will form a literal token from the first character of the remaining input
-<footnote><para>This scheme has the nice quality that lexical scanning (the process of transforming input to a 
-stream of tokens) never fails.</para></footnote>
+we used in our example above is also whitespace. This is ok. If a part of input can be recognized both as a token and as whitespace,
+Kanocc will prefer to emit a token.
+<footnote>
+    <para>
+        In full the Kanocc algorithm for lexical scanning is:
+        <orderedlist>
+          <listitem>
+            At current position in input, all patterns are considered - tokens, literals and whitespace.
+          </listitem>
+          <listitem>
+              Those patterns that matches the <emphasis>longest</emphasis> substring starting at current position are picked out.
+          </listitem>
+          <listitem>
+              If all these are whitespace patterns, current position is advanced to just after the matched substring
+          </listitem>
+          <listitem>
+              If there are tokens and/or literals among the patterns all these are forwarded to the parser for consideration
+          </listitem>
+          <listitem>
+              If nothing could be matched, the first character at current position is emitted as a literal
+          </listitem>
+        </orderedlist>
+        This scheme has the nice quality that lexical scanning (the process of transforming input to a
+stream of tokens) never fails.
+    </para>
+</footnote>
 </para>
 
 </sect1>
@@ -663,9 +684,11 @@ Therefore we must give multiplication rules a <emphasis>lower</emphasis> precede
   <screen>
             Expr
           /  |   \
-       Expr '+'  Number
-      /  | \          \
- Number '-' Number    '3'
+         /   |    \
+       Expr '+'   Number
+      /  | \         |
+    /    |  \       '3'
+ Number '-' Number
    |          |
   '8'        '5'
   </screen>
@@ -674,10 +697,12 @@ Therefore we must give multiplication rules a <emphasis>lower</emphasis> precede
 
   <screen>
        Expr
-     /  |   \
+     /  |  \
+    /   |   \
 Number '-'   Expr
   |         /  |  \
- '8'   Number '+'  Number
+ '8'       /   |   \
+       Number '+'  Number
          |           |
         '5'         '3'
 

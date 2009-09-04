@@ -107,7 +107,9 @@ module Kanocc
     end
 
     def Nonterminal.generate_method_name(*args)
-      method_name = self.name + " --> " + args.map {|a| a.inspect}.join(' ')
+      class_name = self.name || ""
+      method_name = class_name + " --> " + args.map {|a| a.inspect}.join(' ')
+      puts "method_name " + method_name
       @@method_names[self] ||= []
       i = 1
       while @@method_names[self].member?(method_name) do 
