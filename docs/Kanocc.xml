@@ -540,7 +540,7 @@ Excecutes the given block in the context of this new instance.
 
 </orderedlist>
 
-Note how, in our example above, this allows us to set @val in the class instances Kanocc creates.
+Note how, in our example above, this allows us to set <literal remap="tt">@val</literal> in the class instances Kanocc creates.
 </para>
 
 </sect2>
@@ -822,7 +822,7 @@ class Expr &lt; Kanocc::Nonterminal
 end
 
 class Program &lt; Kanocc::Nonterminal
-	rule(zm(Expr, "\n"), "\n") {@rhs[0].elements.each {|expr| puts expr.val}}
+  rule(zm(Expr, "\n"), "\n") {@rhs[0].elements.each {|expr| puts expr.val}}
 end
 
 Kanocc::Kanocc.new(Program).parse &lt;&lt;-EOF
@@ -917,7 +917,7 @@ You'll get something like:
 </para>
 
 <para>
-This is the most basic error-handling Kanocc offers: When it finds that input cannot parse according to the grammar, it will terminate parsing ant raise a <literal remap="tt">Kanocc::ParseException</literal>. This exception will contain the offending input token, it's position, and a list of terminals that Kanocc was expecting at that point.  
+This is the most basic error-handling Kanocc offers: When it finds that input cannot parse according to the grammar, it will terminate parsing and raise a <literal remap="tt">Kanocc::ParseException</literal>. This exception will contain the offending input token, it's position, and a list of terminals that Kanocc was expecting at that point.
 </para>
 
 <sect1>

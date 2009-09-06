@@ -152,6 +152,15 @@ module Kanocc
           @logger.info("Items at #{@inputPos} after error handling:\n" +
                        @items.items_at_n(@inputPos).map {|item| item.inspect}.join("\n"))
         end
+      else
+	expected_terminals =
+	  @items.items_at_n(@inputPos - 1).map { |item| item.rule.rhs[item.dot]}.find_all do |gs|
+	    gs.is_a? String or (gs.is_a? Class and gs.ancestors.include?(Token))
+	  end.uniq
+
+	pos, length = @scanner.current_match.start_pos, @scanner.current_match.length
+	offending_input = @scanner.input[pos, length].inspect
+	raise ParseException.new(expected_terminals, offending_input, pos)
       end
     end
 
@@ -164,28 +173,6 @@ module Kanocc
       return nil
     end
 
-    def report_parsing_error(token_match)
-      expected_terminals =
-        @items.items_at_n(@inputPos - 1).map { |item| item.rule.rhs[item.dot]}.find_all do |gs|
-          gs.is_a? String or (gs.is_a? Class and gs.ancestors.include?(Token))
-        end.uniq
-
-      error_msg = "Could not consume input: #{token_match[:string].inspect}" +
-                 " at position: #{token_match[:start_pos].inspect}"
-      if expected_terminals.size > 0
-        error_msg += " - expected " +
-                     "#{expected_terminals.map {|t| t.inspect}.join(" or ")}"
-      else
-        error_msg += " - no input could be consumed at this point."
-      end
-
-      raise ParseException.new(error_msg,
-                               token_match[:string],
-                               expected_terminals,
-                               token_match[:start_pos])
-
-    end
-      
     def reduce
       item = @items.items_at_n(@inputPos).find do |item|
         @start_symbol == item.rule.lhs and item.dot == 1

@@ -81,7 +81,7 @@ end
 
 parser = Kanocc::Kanocc.new(Program)
 
-#parser.logger.level = Logger::INFO
+parser.logger.level = Logger::INFO
 
 # Feed it some input
 

@@ -257,11 +257,18 @@ module Kanocc
   end
 
   class ParseException < KanoccException
-    attr_reader :offendingInput, :expectedTerminals, :pos
-    def initialize(message, offendingInput, expectedTerminals, pos)
-      @offendingInput, @expectedTerminals, @pos = 
-	offendingInput, expectedTerminals, pos
-      super(message)
+    attr_reader :expectedTerminals, :offendingInput, :pos
+    def initialize(expected_terminals, offending_input, pos)
+      @expected_terminals, @offending_input, @pos =
+	expected_terminals, offending_input, pos
+      error_msg = "\n  Could not consume input: #{offending_input} at #{pos}"
+      if expected_terminals.size > 0
+        error_msg += " - expected " +
+                     "#{expected_terminals.map {|t| t.inspect}.join(" or ")}"
+      else
+        error_msg += " - no input could be consumed at this point."
+      end
+      super(error_msg)
     end
   end
 end
