@@ -2,7 +2,7 @@
 require 'rubygems'
 spec = Gem::Specification.new do |s|
   s.name      = "kanocc"
-  s.version = "0.1.0"
+  s.version = "0.2.0"
   s.author    = "Christian Surlykke"
   s.email     = ""
   s.homepage = ""
