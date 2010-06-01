@@ -39,7 +39,7 @@ module Kanocc
     
     def set_whitespace(*ws_regs)
       raise "set_whitespace must be given a list of Regexp's" \
-	if ws_regs.find {|ws_reg| not ws_reg.is_a?(RegExp)}
+	if ws_regs.find {|ws_reg| not ws_reg.is_a?(Regexp)}
 
       @ws_regs = ws_regs
     end

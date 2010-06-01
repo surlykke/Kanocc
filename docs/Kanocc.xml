@@ -403,13 +403,13 @@ For example, to define that spaces, tabs and anything from a '<literal remap="tt
 you can do:
 
 <screen>
-  myParser.setWhitespace(/ /, /\t/, /#.*/)
+  myParser.set_whitespace(/ /, /\t/, /#.*/)
 </screen>
 
 - or, if you prefer:
 
 <screen>
-  myParser.setWhitespace(/ |\t|#.*/)
+  myParser.set_whitespace(/ |\t|#.*/)
 </screen>
 
 </para>

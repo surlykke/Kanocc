@@ -19,10 +19,10 @@
 #  version 3 along with Kanocc.  If not, see <http://www.gnu.org/licenses/>.
 #
 libdir = File.expand_path(File.join(File.dirname(__FILE__), "..", "lib"))
-$:.unshift(libdir)
-require "kanocc.rb"
-#require 'rubygems'
-#require 'kanocc'
+#$:.unshift(libdir)
+#require "kanocc.rb"
+require 'rubygems'
+require 'kanocc'
 require "logger"
 #require "breakpoint"
 
@@ -81,7 +81,7 @@ end
 
 parser = Kanocc::Kanocc.new(Program)
 
-parser.logger.level = Logger::INFO
+#parser.logger.level = Logger::INFO
 
 # Feed it some input
 
@@ -94,7 +94,7 @@ $source = <<-EOF
 EOF
 
 
-#puts "parsing: \n" + $source
+puts "parsing: \n" + $source
 
 # and go
 parser.parse($source)
