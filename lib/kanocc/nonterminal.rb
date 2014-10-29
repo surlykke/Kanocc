@@ -62,15 +62,21 @@ module Kanocc
     end
   
     def Nonterminal.zm(symbols, sep = nil)
+      # Create the grammar:
+      # In this example, assume symbols are 'a' 'b' and 'c'
+      # list ::=
+      # list ::= non_empty_list
+      # non_empty_list ::= 'a' 'b' 'c'
+      # non_empty_list ::= non_empty_list sep 'a' 'b' 'c'
       list_class = new_list_class 
       non_empty_list_class = new_list_class
-      list_class.rule() {@elements = []}
-      list_class.rule(non_empty_list_class) {@elements = @rhs[0].elements}
-      non_empty_list_class.rule(*symbols) {@elements = @rhs}
+      list_class.rule() {@sem_val = []}
+      list_class.rule(non_empty_list_class) {@sem_val = @rhs[0]}
+      non_empty_list_class.rule(*symbols) {@sem_val = @rhs}
       if sep
-        non_empty_list_class.rule(non_empty_list_class, sep, *symbols) {@elements = @rhs[0].elements + @rhs[2..@rhs.length]}
+        non_empty_list_class.rule(non_empty_list_class, sep, *symbols) {@sem_val = @rhs[0] + @rhs[2..@rhs.length]}
       else
-	non_empty_list_class.rule(non_empty_list_class, *symbols) {@elements = @rhs[0].elements + @rhs[1..@rhs.length]}
+	non_empty_list_class.rule(non_empty_list_class, *symbols) {@sem_val = @rhs[0] + @rhs[1..@rhs.length]}
       end
       return list_class
     end
@@ -78,19 +84,19 @@ module Kanocc
     def Nonterminal.om(symbols, sep = nil)
       symbols = [symbols] unless symbols.is_a? Array
       non_empty_list_class = new_list_class
-      non_empty_list_class.rule(*symbols) {@elements = @rhs}
+      non_empty_list_class.rule(*symbols) {@sem_val = @rhs}
       if sep
-        non_empty_list_class.rule(non_empty_list_class, sep, *symbols) {@elements = @rhs[0].elements + @rhs[2..@rhs.length]}
+        non_empty_list_class.rule(non_empty_list_class, sep, *symbols) {@sem_val = @rhs[0] + @rhs[2..@rhs.length]}
       else
-        non_empty_list_class.rule(non_empty_list_class, *symbols) {@elements = @rhs[0].elements + @rhs[1..@rhs.length]}
+        non_empty_list_class.rule(non_empty_list_class, *symbols) {@sem_val = @rhs[0] + @rhs[1..@rhs.length]}
       end
       return non_empty_list_class
     end
 
     def Nonterminal.zo(symbols)
       zero_or_one_class = new_list_class
-      zero_or_one_class.rule(*symbols) {@elements = @rhs}
-      zero_or_one_class.rule() {@elements = []}
+      zero_or_one_class.rule(*symbols) {@sem_val = @rhs}
+      zero_or_one_class.rule() {@sem_val = []}
     end
 
     @@listClassNumber = 0
@@ -131,6 +137,10 @@ module Kanocc
     
     def Nonterminal.show_method_names
       @@method_names[self].each{|mn| puts mn.inspect} if @@method_names[self]
+    end
+
+    def semantic_value
+      return @sem_val || self
     end
 
     def inspect

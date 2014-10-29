@@ -78,5 +78,9 @@ module Kanocc
     def inspect
       self.class.name 
     end
+
+    def semantic_value
+      return @sem_val || self
+    end
   end
 end

@@ -170,7 +170,7 @@ module Kanocc
         nonterminal.send(rule.method)
         nonterminal.instance_variable_set('@rhs', old_rhs)
       end
-      nonterminal_with_pos = [nonterminal, start_pos, end_pos] 
+      nonterminal_with_pos = [nonterminal.semantic_value, start_pos, end_pos]
       @stack.push(nonterminal_with_pos)
       show_stack
     end
@@ -188,6 +188,7 @@ module Kanocc
         if method = terminal.method(regexp)
 	  instance.send(method)
 	end
+	instance = instance.semantic_value
       else # It's a string literal
 	instance = terminal
       end

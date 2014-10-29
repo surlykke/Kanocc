@@ -19,10 +19,10 @@
 #  version 3 along with Kanocc.  If not, see <http://www.gnu.org/licenses/>.
 #
 libdir = File.expand_path(File.join(File.dirname(__FILE__), "..", "lib"))
-#$:.unshift(libdir)
-#require "kanocc.rb"
+$:.unshift(libdir)
+require "kanocc.rb"
 require 'rubygems'
-require 'kanocc'
+#require 'kanocc'
 require "logger"
 #require "breakpoint"
 
@@ -45,32 +45,25 @@ require "logger"
 
 # ==========  Define a lexical grammar =============
 class Number < Kanocc::Token
-  attr_reader :val
-  pattern(/\d+/) {@val = @m[0].to_i}
-  pattern(/0x[0-9A-F]+/) {@val = @m[0].hex}
+  pattern(/\d+/) {@sem_val = @m[0].to_i}
+  pattern(/0x[0-9A-F]+/) {@sem_val = @m[0].hex}
 end
 
 # ==========  Define a grammar =====================
 class Expr < Kanocc::Nonterminal
-  attr_reader :val
-  
-  rule(Expr, "+", Expr)  {@val = @rhs[0].val + @rhs[2].val}
-  rule(Expr, "-", Expr)  {@val = @rhs[0].val - @rhs[2].val}
-  rule(Expr, "*", Expr)  {@val = @rhs[0].val * @rhs[2].val}; precedence -1
-  rule(Expr, "/", Expr)  {@val = @rhs[0].val / @rhs[2].val}; precedence -1
-  rule("(", Expr, ")")   {@val = @rhs[1].val}
-  rule(Number)           {@val = @rhs[0].val}
+  rule(Expr, "+", Expr)  {@sem_val = @rhs[0] + @rhs[2]}
+  rule(Expr, "-", Expr)  {@sem_val = @rhs[0] - @rhs[2]}
+  rule(Expr, "*", Expr)  {@sem_val = @rhs[0] * @rhs[2]}; precedence -1
+  rule(Expr, "/", Expr)  {@sem_val = @rhs[0] / @rhs[2]}; precedence -1
+  rule("(", Expr, ")")   {@sem_val = @rhs[1]}
+  rule(Number)           {@sem_val = @rhs[0]}
 end
 
 class Line < Kanocc::Nonterminal
   rule(Expr, "\n")   do
     str = $source[@rhs.start_pos..@rhs.end_pos - 2]
-    puts str + " gives: " + @rhs[0].val.to_s
+    puts str + " gives: " + @rhs[0].to_s
   end
-#  rule(Kanocc::Error, "\n") do 
-#    error_string = $source[@rhs.start_pos..@rhs.end_pos]
-#    puts "Sorry - didn't understand: #{error_string.inspect}"
-#  end
 end
 
 class Program < Kanocc::Nonterminal
